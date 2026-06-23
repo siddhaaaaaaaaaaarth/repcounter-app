@@ -112,22 +112,22 @@
   }
   .grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(2, 1fr);   /* 2 across -> 3 rows of 2 on a phone */
+    gap: 14px;
   }
-  @media (min-width: 560px) { .grid { grid-template-columns: repeat(3, 1fr); } }
 
   .card {
     position: relative;
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 16px 14px;
+    padding: 14px;
     cursor: pointer;
-    min-height: 104px;
+    aspect-ratio: 1 / 1;                      /* square tiles */
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    align-items: flex-start;
+    justify-content: flex-start;             /* name sits top-left */
     overflow: hidden;
     transition: transform .08s ease, border-color .12s;
   }
@@ -300,6 +300,48 @@
     margin-top: 4px;
   }
   .add-exercise:active { background: var(--panel); }
+
+  /* ===================== save / export / toast ===================== */
+  .pill-btn {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .pill-btn:active { transform: scale(.96); }
+  .pill-btn.ghost {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(24px + var(--safe-b));
+    transform: translateX(-50%) translateY(18px);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px 18px;
+    border-radius: 999px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 100;
+    max-width: 90%;
+    text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -324,12 +366,14 @@
         var s = JSON.parse(raw);
         if (!s.unit) s.unit = "kg";
         if (!Array.isArray(s.days)) s.days = [];
+        if (!Array.isArray(s.history)) s.history = [];
         return s;
       }
     } catch (e) {}
     // first launch: seed a couple of workouts so the menu isn't empty
     return {
       unit: "kg",
+      history: [],
       days: [
         {
           id: uid(), name: "Push Day",
@@ -355,6 +399,15 @@
   function getDrop(set, id) { return set.drops.find(function (dr) { return dr.id === id; }); }
   function esc(v)          { return (v == null ? "" : String(v)).replace(/"/g, "&quot;"); }
 
+  // every exercise name used anywhere -> autocomplete suggestions
+  function allExerciseNames() {
+    var seen = {};
+    state.days.forEach(function (d) {
+      d.exercises.forEach(function (e) { var n = (e.name || "").trim(); if (n) seen[n] = 1; });
+    });
+    return Object.keys(seen).sort();
+  }
+
   var app = document.getElementById("app");
 
   // ---------- render ----------
@@ -373,7 +426,9 @@
 
   function renderHome() {
     var html = '<div class="appbar">' +
-      '<h1 class="title grow">Workouts</h1>' + unitToggleHTML() +
+      '<h1 class="title grow">Workouts</h1>' +
+      unitToggleHTML() +
+      '<button class="pill-btn ghost" data-action="export" title="Export to Excel">Export</button>' +
       '</div>';
 
     if (!state.days.length) {
@@ -387,7 +442,9 @@
       return;
     }
 
-    html += '<div class="home-sub">Tap a workout to open it.</div>';
+    var saved = state.history.length;
+    html += '<div class="home-sub">Tap a workout to open it.' +
+      (saved ? ' · ' + saved + (saved === 1 ? ' session saved' : ' sessions saved') : '') + '</div>';
     html += '<div class="grid">';
     state.days.forEach(function (d) {
       var nEx = d.exercises.length;
@@ -409,18 +466,24 @@
     var u = state.unit;
 
     var html = '<div class="appbar">' +
-      '<button class="back-btn" data-action="home">‹ Workouts</button>' +
+      '<button class="back-btn" data-action="home">‹ Back</button>' +
       '<span class="grow"></span>' +
+      '<button class="pill-btn" data-action="save" data-day="' + day.id + '">Save</button>' +
       unitToggleHTML() +
       '<button class="icon-btn danger" data-action="delDay" data-day="' + day.id + '" title="Delete workout">🗑</button>' +
       '</div>';
 
     html += '<input class="day-name" data-kind="dayname" data-day="' + day.id + '" value="' + esc(day.name) + '" placeholder="Workout name" />';
 
+    var dl = allExerciseNames();
+    html += '<datalist id="exNames">' +
+      dl.map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join("") +
+      '</datalist>';
+
     day.exercises.forEach(function (ex) {
       html += '<div class="exercise">';
       html += '<div class="ex-head">' +
-        '<input class="ex-name" data-kind="exname" data-ex="' + ex.id + '" value="' + esc(ex.name) + '" placeholder="Exercise name" />' +
+        '<input class="ex-name" list="exNames" data-kind="exname" data-ex="' + ex.id + '" value="' + esc(ex.name) + '" placeholder="Exercise name" />' +
         '<button class="icon-btn danger" data-action="delEx" data-ex="' + ex.id + '" title="Delete exercise">🗑</button>' +
         '</div>';
 
@@ -507,6 +570,8 @@
       set.drops = set.drops.filter(function (dr) { return dr.id !== btn.dataset.drop; });
       render();
     }
+    else if (a === "save")   { saveSession(getDay(btn.dataset.day) || day); }
+    else if (a === "export") { exportWorkbook(); }
   });
 
   // ---------- field edits (update without re-render to keep focus) ----------
@@ -523,6 +588,188 @@
     }
     save();
   });
+
+  // ===================== Save session + export to Excel =====================
+  var toastEl = document.createElement("div");
+  toastEl.className = "toast";
+  document.body.appendChild(toastEl);
+  var toastTimer = null;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2800);
+  }
+
+  var enc = new TextEncoder();
+  var crcTable = (function () {
+    var t = [];
+    for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; }
+    return t;
+  })();
+  function crc32(b) { var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = crcTable[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+
+  // minimal store-only zip writer -> valid .xlsx without any library
+  function zipStore(files) {
+    var u16 = function (n) { return [n & 255, (n >>> 8) & 255]; };
+    var u32 = function (n) { n >>>= 0; return [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]; };
+    var parts = [], central = [], offset = 0;
+    files.forEach(function (f) {
+      var name = enc.encode(f.name), data = f.data, crc = crc32(data), len = data.length;
+      var lh = new Uint8Array([].concat(u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0), u32(crc), u32(len), u32(len), u16(name.length), u16(0)));
+      parts.push(lh, name, data);
+      central.push(new Uint8Array([].concat(u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0), u32(crc), u32(len), u32(len), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset))), name);
+      offset += lh.length + name.length + data.length;
+    });
+    var cSize = central.reduce(function (a, b) { return a + b.length; }, 0);
+    var end = new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(cSize), u32(offset), u16(0)));
+    var all = parts.concat(central, [end]);
+    var total = all.reduce(function (a, b) { return a + b.length; }, 0);
+    var out = new Uint8Array(total), p = 0;
+    all.forEach(function (b) { out.set(b, p); p += b.length; });
+    return out;
+  }
+
+  function xe(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function numOrNull(v) { if (v === "" || v == null) return null; var n = Number(v); return isFinite(n) ? n : null; }
+  function dateSerial(iso) { var p = iso.split("-"); return Math.floor((Date.UTC(+p[0], +p[1] - 1, +p[2]) - Date.UTC(1899, 11, 30)) / 86400000); }
+  function todayISO() { var d = new Date(), m = String(d.getMonth() + 1).padStart(2, "0"), dd = String(d.getDate()).padStart(2, "0"); return d.getFullYear() + "-" + m + "-" + dd; }
+
+  var STYLES_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy\\-mm\\-dd"/></numFmts>' +
+    '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+    '<borders count="1"><border/></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' +
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+
+  // one worksheet for one exercise: Date | Set | Reps | Weight, a blank row between days
+  function sheetXml(sessions) {
+    var b = '<row r="1">' +
+      '<c r="A1" s="1" t="inlineStr"><is><t>Date</t></is></c>' +
+      '<c r="B1" s="1" t="inlineStr"><is><t>Set</t></is></c>' +
+      '<c r="C1" s="1" t="inlineStr"><is><t>Reps</t></is></c>' +
+      '<c r="D1" s="1" t="inlineStr"><is><t>Weight</t></is></c></row>';
+    var r = 2;
+    sessions.forEach(function (day) {
+      var serial = dateSerial(day.date);
+      day.rows.forEach(function (row) {
+        var c = '<row r="' + r + '"><c r="A' + r + '" s="2"><v>' + serial + '</v></c>';
+        c += '<c r="B' + r + '"><v>' + row.set + '</v></c>';
+        c += (row.reps == null ? '' : '<c r="C' + r + '"><v>' + row.reps + '</v></c>');
+        c += (row.weight == null ? '' : '<c r="D' + r + '"><v>' + row.weight + '</v></c>');
+        b += c + '</row>'; r++;
+      });
+      r++; // leave one blank row between days
+    });
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>' +
+      '<sheetFormatPr defaultRowHeight="15"/>' +
+      '<cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="2" width="7" customWidth="1"/><col min="3" max="3" width="7" customWidth="1"/><col min="4" max="4" width="9" customWidth="1"/></cols>' +
+      '<sheetData>' + b + '</sheetData></worksheet>';
+  }
+
+  function safeSheetName(name, used) {
+    var n = name.replace(/[:\\\/?*\[\]]/g, " ").trim().slice(0, 31) || "Sheet";
+    var base = n, i = 2;
+    while (used[n.toLowerCase()]) { var suf = " " + i; n = base.slice(0, 31 - suf.length) + suf; i++; }
+    used[n.toLowerCase()] = 1;
+    return n;
+  }
+
+  // group every saved session's data by exercise name, ordered by date
+  function buildExerciseMap() {
+    var map = {}, order = [];
+    var sorted = state.history.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    sorted.forEach(function (sess) {
+      sess.exercises.forEach(function (ex) {
+        var name = (ex.name || "").trim();
+        if (!name) return;
+        var rows = [], setNo = 0;
+        ex.sets.forEach(function (s) {
+          var rp = numOrNull(s.reps), wt = numOrNull(s.weight);
+          var drops = (s.drops || []).filter(function (d) { return numOrNull(d.reps) != null || numOrNull(d.weight) != null; });
+          if (rp == null && wt == null && !drops.length) return;
+          if (!(rp == null && wt == null)) { setNo++; rows.push({ set: String(setNo), reps: rp, weight: wt }); }
+          drops.forEach(function (d, di) { rows.push({ set: setNo + "." + (di + 1), reps: numOrNull(d.reps), weight: numOrNull(d.weight) }); });
+        });
+        if (!rows.length) return;
+        if (!map[name]) { map[name] = []; order.push(name); }
+        map[name].push({ date: sess.date, rows: rows });
+      });
+    });
+    return { order: order, map: map };
+  }
+
+  function exportWorkbook() {
+    var agg = buildExerciseMap();
+    if (!agg.order.length) { toast("Nothing saved yet — log a session and tap Save."); return; }
+
+    var used = {}, meta = [];
+    agg.order.forEach(function (name, idx) {
+      meta.push({ file: "sheet" + (idx + 1) + ".xml", rid: "rId" + (idx + 1), title: safeSheetName(name, used), xml: sheetXml(agg.map[name]) });
+    });
+    var styRid = "rId" + (meta.length + 1);
+
+    var wb = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
+      meta.map(function (m, i) { return '<sheet name="' + xe(m.title) + '" sheetId="' + (i + 1) + '" r:id="' + m.rid + '"/>'; }).join("") + '</sheets></workbook>';
+    var wbRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      meta.map(function (m) { return '<Relationship Id="' + m.rid + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/' + m.file + '"/>'; }).join("") +
+      '<Relationship Id="' + styRid + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
+    var ct = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      meta.map(function (m) { return '<Override PartName="/xl/worksheets/' + m.file + '" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'; }).join("") +
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>';
+    var rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+
+    var files = [
+      { name: "[Content_Types].xml", data: enc.encode(ct) },
+      { name: "_rels/.rels", data: enc.encode(rels) },
+      { name: "xl/workbook.xml", data: enc.encode(wb) },
+      { name: "xl/_rels/workbook.xml.rels", data: enc.encode(wbRels) },
+      { name: "xl/styles.xml", data: enc.encode(STYLES_XML) }
+    ];
+    meta.forEach(function (m) { files.push({ name: "xl/worksheets/" + m.file, data: enc.encode(m.xml) }); });
+
+    var blob = new Blob([zipStore(files)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "workout-log.xlsx";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+  }
+
+  function snapshotDay(day) {
+    var exs = [];
+    day.exercises.forEach(function (ex) {
+      if (!(ex.name || "").trim()) return;
+      var hasData = ex.sets.some(function (s) {
+        return s.reps !== "" || s.weight !== "" || (s.drops || []).some(function (d) { return d.reps !== "" || d.weight !== ""; });
+      });
+      if (!hasData) return;
+      exs.push({
+        name: ex.name.trim(),
+        sets: ex.sets.map(function (s) {
+          return { reps: s.reps, weight: s.weight, drops: (s.drops || []).map(function (d) { return { reps: d.reps, weight: d.weight }; }) };
+        })
+      });
+    });
+    return exs;
+  }
+
+  function saveSession(day) {
+    if (!day) return;
+    var exs = snapshotDay(day);
+    if (!exs.length) { toast("Add some reps or weight first."); return; }
+    var date = todayISO();
+    state.history = state.history.filter(function (s) { return !(s.date === date && s.dayId === day.id); });
+    state.history.push({ id: uid(), date: date, dayId: day.id, dayName: day.name, exercises: exs });
+    save();
+    toast("Saved " + (day.name || "workout") + " · " + date);
+    exportWorkbook();
+  }
 
   // Android hardware back button -> go home instead of leaving the app
   window.addEventListener("popstate", function () {

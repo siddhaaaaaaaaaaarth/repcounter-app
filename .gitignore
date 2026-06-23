@@ -1,0 +1,5 @@
+# local tooling / preview config
+.claude/
+
+# generated/sample spreadsheets (not part of the app)
+*.xlsx
