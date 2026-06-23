@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Workout Tracker</title>
+
+<!-- PWA / install -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0e1014" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Workouts" />
+
+<style>
+  :root {
+    --bg:       #0e1014;
+    --panel:    #181b22;
+    --panel-2:  #1f232c;
+    --border:   #2a2f3a;
+    --text:     #e6e8ec;
+    --muted:    #8b909a;
+    --accent:   #4f8cff;
+    --drop:     #f59e0b;
+    --danger:   #ef4444;
+    --radius:   14px;
+    --safe-t:   env(safe-area-inset-top, 0px);
+    --safe-b:   env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+
+  button, input { font-family: inherit; }
+  button { user-select: none; }
+
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: calc(14px + var(--safe-t)) 16px calc(90px + var(--safe-b));
+  }
+
+  /* ===================== shared top bar ===================== */
+  .appbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: calc(12px + var(--safe-t)) 16px 12px;
+    background: linear-gradient(var(--bg) 78%, rgba(14,16,20,0));
+    margin: calc(-14px - var(--safe-t)) -16px 8px;
+  }
+  .appbar .grow { flex: 1; min-width: 0; }
+
+  .back-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 9px 14px 9px 11px;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .back-btn:active { background: var(--panel-2); }
+
+  h1.title {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .unit-toggle {
+    display: inline-flex;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .unit-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .unit-toggle button.active { background: var(--accent); color: #fff; }
+
+  /* ===================== HOME (workout menu) ===================== */
+  .home-sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 2px 2px 16px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  @media (min-width: 560px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+
+  .card {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 14px;
+    cursor: pointer;
+    min-height: 104px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+    transition: transform .08s ease, border-color .12s;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 4px;
+    background: var(--accent);
+    opacity: .9;
+  }
+  .card:active { transform: scale(.97); }
+  .card .card-name {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.25;
+    word-break: break-word;
+  }
+  .card .card-sub {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 5px;
+  }
+
+  .card.add {
+    align-items: center;
+    justify-content: center;
+    border-style: dashed;
+    background: transparent;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .card.add::before { display: none; }
+
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 60px 20px;
+  }
+  .empty .big {
+    font-size: 17px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  /* ===================== DAY DETAIL ===================== */
+  .day-name {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text);
+    font-size: 27px;
+    font-weight: 700;
+    padding: 2px 2px 6px;
+    margin-bottom: 14px;
+  }
+  .day-name:focus { outline: none; border-bottom-color: var(--accent); }
+
+  .exercise {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 12px 10px;
+    margin-bottom: 14px;
+  }
+  .ex-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .ex-name {
+    flex: 1;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 600;
+    padding: 11px 12px;
+    min-width: 0;
+  }
+  .ex-name:focus { outline: none; border-color: var(--accent); }
+
+  table.sets { width: 100%; border-collapse: collapse; }
+  table.sets th {
+    text-align: left;
+    font-size: 11px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+    padding: 2px 5px 6px;
+  }
+  table.sets td { padding: 3px 5px; vertical-align: middle; }
+
+  .col-label { width: 56px; }
+  .col-num   { width: 34%; }
+  .col-act   { width: 84px; text-align: right; }
+
+  .set-label { color: var(--muted); font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .drop-label { color: var(--drop); font-weight: 800; font-size: 12px; white-space: nowrap; }
+
+  input.num {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text);
+    font-size: 16px;            /* 16px stops iOS zoom-on-focus */
+    padding: 10px 8px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  input.num:focus { outline: none; border-color: var(--accent); }
+  input.num::-webkit-outer-spin-button,
+  input.num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input.num { -moz-appearance: textfield; }
+
+  tr.drop .drop-cell { border-left: 3px solid var(--drop); padding-left: 8px; }
+  tr.drop input.num { background: #20232b; }
+
+  .icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 17px;
+    line-height: 1;
+    padding: 8px;
+    border-radius: 8px;
+  }
+  .icon-btn:active { background: var(--panel-2); }
+  .icon-btn.danger:active { color: var(--danger); }
+
+  .add-drop {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--drop);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 8px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .add-drop:active { background: var(--panel-2); }
+
+  .text-btn {
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--muted);
+    border-radius: 9px;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .text-btn:active { color: var(--text); border-color: var(--accent); }
+
+  .add-exercise {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--accent);
+    border-radius: var(--radius);
+    padding: 15px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .add-exercise:active { background: var(--panel); }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var KEY = "workout-tracker-v1";
+  var uid = function () { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); };
+
+  // ---------- state ----------
+  var state = load();
+  var view = "home";        // "home" | "day"  (navigation is per-session)
+  var activeDayId = null;
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var s = JSON.parse(raw);
+        if (!s.unit) s.unit = "kg";
+        if (!Array.isArray(s.days)) s.days = [];
+        return s;
+      }
+    } catch (e) {}
+    // first launch: seed a couple of workouts so the menu isn't empty
+    return {
+      unit: "kg",
+      days: [
+        {
+          id: uid(), name: "Push Day",
+          exercises: [{
+            id: uid(), name: "Bench Press",
+            sets: [
+              { id: uid(), reps: "10", weight: "60", drops: [] },
+              { id: uid(), reps: "8",  weight: "70", drops: [ { id: uid(), reps: "6", weight: "50" } ] }
+            ]
+          }]
+        },
+        { id: uid(), name: "Pull Day", exercises: [] }
+      ]
+    };
+  }
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  // ---------- lookups ----------
+  function getDay(id)       { return state.days.find(function (d) { return d.id === id; }); }
+  function getEx(day, id)   { return day.exercises.find(function (e) { return e.id === id; }); }
+  function getSet(ex, id)   { return ex.sets.find(function (s) { return s.id === id; }); }
+  function getDrop(set, id) { return set.drops.find(function (dr) { return dr.id === id; }); }
+  function esc(v)          { return (v == null ? "" : String(v)).replace(/"/g, "&quot;"); }
+
+  var app = document.getElementById("app");
+
+  // ---------- render ----------
+  function render() {
+    if (view === "day" && getDay(activeDayId)) renderDay(getDay(activeDayId));
+    else { view = "home"; renderHome(); }
+    save();
+  }
+
+  function unitToggleHTML() {
+    return '<div class="unit-toggle" data-role="unit">' +
+      '<button data-unit="kg" class="' + (state.unit === "kg" ? "active" : "") + '">kg</button>' +
+      '<button data-unit="lb" class="' + (state.unit === "lb" ? "active" : "") + '">lb</button>' +
+      '</div>';
+  }
+
+  function renderHome() {
+    var html = '<div class="appbar">' +
+      '<h1 class="title grow">Workouts</h1>' + unitToggleHTML() +
+      '</div>';
+
+    if (!state.days.length) {
+      html += '<div class="empty">' +
+        '<div class="big">No workouts yet</div>' +
+        '<div>Create one to get started.</div>' +
+        '<div class="grid" style="margin-top:22px">' +
+          '<div class="card add" data-action="addDay">+ New workout</div>' +
+        '</div></div>';
+      app.innerHTML = html;
+      return;
+    }
+
+    html += '<div class="home-sub">Tap a workout to open it.</div>';
+    html += '<div class="grid">';
+    state.days.forEach(function (d) {
+      var nEx = d.exercises.length;
+      var nSets = d.exercises.reduce(function (a, e) { return a + e.sets.length; }, 0);
+      var sub = nEx
+        ? nEx + (nEx === 1 ? " exercise" : " exercises") + " · " + nSets + (nSets === 1 ? " set" : " sets")
+        : "Empty";
+      html += '<div class="card" data-action="openDay" data-day="' + d.id + '">' +
+        '<div class="card-name">' + esc(d.name || "Untitled") + '</div>' +
+        '<div class="card-sub">' + sub + '</div>' +
+        '</div>';
+    });
+    html += '<div class="card add" data-action="addDay">+ New workout</div>';
+    html += '</div>';
+    app.innerHTML = html;
+  }
+
+  function renderDay(day) {
+    var u = state.unit;
+
+    var html = '<div class="appbar">' +
+      '<button class="back-btn" data-action="home">‹ Workouts</button>' +
+      '<span class="grow"></span>' +
+      unitToggleHTML() +
+      '<button class="icon-btn danger" data-action="delDay" data-day="' + day.id + '" title="Delete workout">🗑</button>' +
+      '</div>';
+
+    html += '<input class="day-name" data-kind="dayname" data-day="' + day.id + '" value="' + esc(day.name) + '" placeholder="Workout name" />';
+
+    day.exercises.forEach(function (ex) {
+      html += '<div class="exercise">';
+      html += '<div class="ex-head">' +
+        '<input class="ex-name" data-kind="exname" data-ex="' + ex.id + '" value="' + esc(ex.name) + '" placeholder="Exercise name" />' +
+        '<button class="icon-btn danger" data-action="delEx" data-ex="' + ex.id + '" title="Delete exercise">🗑</button>' +
+        '</div>';
+
+      html += '<table class="sets"><thead><tr>' +
+        '<th class="col-label">Set</th><th class="col-num">Reps</th>' +
+        '<th class="col-num">Weight (' + u + ')</th><th class="col-act"></th>' +
+        '</tr></thead><tbody>';
+
+      ex.sets.forEach(function (s, i) {
+        html += '<tr>' +
+          '<td class="set-label">' + (i + 1) + '</td>' +
+          '<td><input class="num" type="number" inputmode="numeric" step="1" min="0" data-kind="set" data-field="reps" data-ex="' + ex.id + '" data-set="' + s.id + '" value="' + esc(s.reps) + '" /></td>' +
+          '<td><input class="num" type="number" inputmode="decimal" step="0.5" min="0" data-kind="set" data-field="weight" data-ex="' + ex.id + '" data-set="' + s.id + '" value="' + esc(s.weight) + '" /></td>' +
+          '<td class="col-act">' +
+            '<button class="add-drop" data-action="addDrop" data-ex="' + ex.id + '" data-set="' + s.id + '" title="Add drop set">+ drop</button> ' +
+            '<button class="icon-btn danger" data-action="delSet" data-ex="' + ex.id + '" data-set="' + s.id + '" title="Delete set">✕</button>' +
+          '</td></tr>';
+
+        s.drops.forEach(function (dr, di) {
+          html += '<tr class="drop">' +
+            '<td class="drop-label">↳ drop ' + (di + 1) + '</td>' +
+            '<td class="drop-cell"><input class="num" type="number" inputmode="numeric" step="1" min="0" data-kind="drop" data-field="reps" data-ex="' + ex.id + '" data-set="' + s.id + '" data-drop="' + dr.id + '" value="' + esc(dr.reps) + '" /></td>' +
+            '<td><input class="num" type="number" inputmode="decimal" step="0.5" min="0" data-kind="drop" data-field="weight" data-ex="' + ex.id + '" data-set="' + s.id + '" data-drop="' + dr.id + '" value="' + esc(dr.weight) + '" /></td>' +
+            '<td class="col-act"><button class="icon-btn danger" data-action="delDrop" data-ex="' + ex.id + '" data-set="' + s.id + '" data-drop="' + dr.id + '" title="Delete drop set">✕</button></td>' +
+          '</tr>';
+        });
+      });
+
+      html += '</tbody></table>';
+      html += '<button class="text-btn" data-action="addSet" data-ex="' + ex.id + '">+ Add set</button>';
+      html += '</div>';
+    });
+
+    html += '<button class="add-exercise" data-action="addEx">+ Add exercise</button>';
+    app.innerHTML = html;
+  }
+
+  // ---------- clicks ----------
+  app.addEventListener("click", function (e) {
+    // unit toggle (present in both views)
+    var ub = e.target.closest('[data-role="unit"] button');
+    if (ub) { state.unit = ub.dataset.unit; render(); return; }
+
+    var btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    var a = btn.dataset.action;
+    var day = getDay(activeDayId);
+
+    if (a === "home") { view = "home"; render(); }
+    else if (a === "openDay") { activeDayId = btn.dataset.day; view = "day"; render(); }
+    else if (a === "addDay") {
+      var nd = { id: uid(), name: "", exercises: [] };
+      state.days.push(nd);
+      activeDayId = nd.id; view = "day"; render();
+    }
+    else if (a === "delDay") {
+      if (!confirm("Delete this workout and everything in it?")) return;
+      state.days = state.days.filter(function (d) { return d.id !== btn.dataset.day; });
+      view = "home"; activeDayId = null; render();
+    }
+    else if (a === "addEx") {
+      day.exercises.push({ id: uid(), name: "", sets: [ { id: uid(), reps: "", weight: "", drops: [] } ] });
+      render();
+    }
+    else if (a === "delEx") {
+      day.exercises = day.exercises.filter(function (x) { return x.id !== btn.dataset.ex; });
+      render();
+    }
+    else if (a === "addSet") {
+      getEx(day, btn.dataset.ex).sets.push({ id: uid(), reps: "", weight: "", drops: [] });
+      render();
+    }
+    else if (a === "delSet") {
+      var ex = getEx(day, btn.dataset.ex);
+      ex.sets = ex.sets.filter(function (s) { return s.id !== btn.dataset.set; });
+      render();
+    }
+    else if (a === "addDrop") {
+      getSet(getEx(day, btn.dataset.ex), btn.dataset.set).drops.push({ id: uid(), reps: "", weight: "" });
+      render();
+    }
+    else if (a === "delDrop") {
+      var set = getSet(getEx(day, btn.dataset.ex), btn.dataset.set);
+      set.drops = set.drops.filter(function (dr) { return dr.id !== btn.dataset.drop; });
+      render();
+    }
+  });
+
+  // ---------- field edits (update without re-render to keep focus) ----------
+  app.addEventListener("input", function (e) {
+    var t = e.target, kind = t.dataset.kind;
+    if (!kind) return;
+    var day = getDay(activeDayId);
+    if (kind === "dayname") { var d = getDay(t.dataset.day); if (d) d.name = t.value; }
+    else if (kind === "exname") { var ex = getEx(day, t.dataset.ex); if (ex) ex.name = t.value; }
+    else if (kind === "set") { var s = getSet(getEx(day, t.dataset.ex), t.dataset.set); if (s) s[t.dataset.field] = t.value; }
+    else if (kind === "drop") {
+      var set = getSet(getEx(day, t.dataset.ex), t.dataset.set);
+      var dr = getDrop(set, t.dataset.drop); if (dr) dr[t.dataset.field] = t.value;
+    }
+    save();
+  });
+
+  // Android hardware back button -> go home instead of leaving the app
+  window.addEventListener("popstate", function () {
+    if (view === "day") { view = "home"; render(); history.pushState(null, ""); }
+  });
+  history.pushState(null, "");
+
+  render();
+
+  // ---------- register service worker (enables offline + install) ----------
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
