@@ -118,50 +118,72 @@
 
   .card {
     position: relative;
-    background: var(--panel);
+    background-color: var(--panel);
+    background-image:
+      radial-gradient(135% 110% at 100% 0%, color-mix(in srgb, var(--c) 20%, transparent), transparent 55%),
+      linear-gradient(160deg, rgba(255,255,255,.035), rgba(255,255,255,0) 60%);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px;
+    border-radius: 20px;
+    padding: 15px;
     cursor: pointer;
     aspect-ratio: 1 / 1;                      /* square tiles */
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;             /* name sits top-left */
     overflow: hidden;
-    transition: transform .08s ease, border-color .12s;
+    box-shadow: 0 6px 18px rgba(0,0,0,.28);
+    transition: transform .1s ease, box-shadow .15s ease, border-color .15s ease;
+    -webkit-user-select: none; user-select: none;
   }
-  .card::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 4px;
-    background: var(--accent);
-    opacity: .9;
+  .card:active { transform: scale(.96); }
+  @media (hover: hover) {
+    .card:hover {
+      border-color: color-mix(in srgb, var(--c) 55%, var(--border));
+      box-shadow: 0 12px 28px rgba(0,0,0,.38);
+    }
   }
-  .card:active { transform: scale(.97); }
+
+  .card .ic {
+    width: 46px; height: 46px;
+    border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--c);
+    background: color-mix(in srgb, var(--c) 18%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 32%, transparent);
+  }
+  .card .ic svg { width: 25px; height: 25px; }
+  .card .spacer { flex: 1 1 auto; }
   .card .card-name {
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 700;
-    line-height: 1.25;
+    line-height: 1.2;
+    letter-spacing: -.01em;
     word-break: break-word;
   }
   .card .card-sub {
     color: var(--muted);
     font-size: 12px;
-    margin-top: 5px;
+    margin-top: 4px;
   }
+  .card .chev { position: absolute; top: 15px; right: 13px; color: var(--muted); opacity: .45; }
 
   .card.add {
     align-items: center;
     justify-content: center;
-    border-style: dashed;
-    background: transparent;
+    gap: 10px;
+    background-image: none;
+    border: 1.5px dashed var(--border);
+    box-shadow: none;
     color: var(--accent);
     font-weight: 700;
-    font-size: 15px;
+    font-size: 14px;
   }
-  .card.add::before { display: none; }
+  .card.add .plus {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    font-size: 28px; font-weight: 300; line-height: 1;
+  }
+  .card.add:active { transform: scale(.96); border-color: var(--accent); }
 
   .empty {
     text-align: center;
@@ -342,6 +364,20 @@
     text-align: center;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .file-row {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+    margin: -8px 2px 16px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .file-row b { color: var(--text); font-weight: 600; }
+  .link-btn {
+    background: none; border: none;
+    color: var(--accent); font-size: 12px; font-weight: 700;
+    cursor: pointer; padding: 2px;
+  }
 </style>
 </head>
 <body>
@@ -436,7 +472,7 @@
         '<div class="big">No workouts yet</div>' +
         '<div>Create one to get started.</div>' +
         '<div class="grid" style="margin-top:22px">' +
-          '<div class="card add" data-action="addDay">+ New workout</div>' +
+          '<div class="card add" data-action="addDay"><span class="plus">+</span><span>New workout</span></div>' +
         '</div></div>';
       app.innerHTML = html;
       return;
@@ -445,19 +481,32 @@
     var saved = state.history.length;
     html += '<div class="home-sub">Tap a workout to open it.' +
       (saved ? ' · ' + saved + (saved === 1 ? ' session saved' : ' sessions saved') : '') + '</div>';
+    if (FSA) {
+      html += fileHandle
+        ? '<div class="file-row"><span>Saving to <b>' + esc(fileHandle.name) + '</b></span><button class="link-btn" data-action="relink">change file</button></div>'
+        : '<div class="file-row"><span>Your first Save will ask where to keep your Excel file.</span><button class="link-btn" data-action="relink">choose now</button></div>';
+    } else {
+      html += '<div class="file-row"><span>This browser saves by downloading a copy each time.</span></div>';
+    }
+    var PALETTE = ["#4f8cff", "#34d399", "#f59e0b", "#a78bfa", "#f472b6", "#22d3ee"];
+    var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7v10M3.5 9.5v5M17.5 7v10M20.5 9.5v5M6.5 12h11"/></svg>';
+    var CHEV = '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
     html += '<div class="grid">';
-    state.days.forEach(function (d) {
+    state.days.forEach(function (d, i) {
       var nEx = d.exercises.length;
       var nSets = d.exercises.reduce(function (a, e) { return a + e.sets.length; }, 0);
       var sub = nEx
         ? nEx + (nEx === 1 ? " exercise" : " exercises") + " · " + nSets + (nSets === 1 ? " set" : " sets")
         : "Empty";
-      html += '<div class="card" data-action="openDay" data-day="' + d.id + '">' +
+      html += '<div class="card" data-action="openDay" data-day="' + d.id + '" style="--c:' + PALETTE[i % PALETTE.length] + '">' +
+        CHEV +
+        '<div class="ic">' + ICON + '</div>' +
+        '<div class="spacer"></div>' +
         '<div class="card-name">' + esc(d.name || "Untitled") + '</div>' +
         '<div class="card-sub">' + sub + '</div>' +
         '</div>';
     });
-    html += '<div class="card add" data-action="addDay">+ New workout</div>';
+    html += '<div class="card add" data-action="addDay"><span class="plus">+</span><span>New workout</span></div>';
     html += '</div>';
     app.innerHTML = html;
   }
@@ -571,7 +620,8 @@
       render();
     }
     else if (a === "save")   { saveSession(getDay(btn.dataset.day) || day); }
-    else if (a === "export") { exportWorkbook(); }
+    else if (a === "export") { exportDownload(); }
+    else if (a === "relink") { pickFile().then(function () { render(); toast("Saving to " + fileHandle.name); }).catch(function () {}); }
   });
 
   // ---------- field edits (update without re-render to keep focus) ----------
@@ -704,9 +754,9 @@
     return { order: order, map: map };
   }
 
-  function exportWorkbook() {
+  function buildWorkbookBytes() {
     var agg = buildExerciseMap();
-    if (!agg.order.length) { toast("Nothing saved yet — log a session and tap Save."); return; }
+    if (!agg.order.length) return null;
 
     var used = {}, meta = [];
     agg.order.forEach(function (name, idx) {
@@ -732,13 +782,67 @@
       { name: "xl/styles.xml", data: enc.encode(STYLES_XML) }
     ];
     meta.forEach(function (m) { files.push({ name: "xl/worksheets/" + m.file, data: enc.encode(m.xml) }); });
+    return zipStore(files);
+  }
 
-    var blob = new Blob([zipStore(files)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  function downloadBytes(bytes, name) {
+    var blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
-    a.href = url; a.download = "workout-log.xlsx";
+    a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+  }
+
+  function exportDownload() {
+    var bytes = buildWorkbookBytes();
+    if (!bytes) { toast("Nothing saved yet — log a session and tap Save."); return; }
+    downloadBytes(bytes, "workout-log.xlsx");
+    toast("Downloaded a copy of workout-log.xlsx");
+  }
+
+  // ---- one persistent file via File System Access API (Chrome/Edge incl. Android) ----
+  var FSA = (typeof window.showSaveFilePicker === "function");
+  var fileHandle = null;
+
+  function idbReq(mode, fn) {
+    return new Promise(function (res, rej) {
+      var op = indexedDB.open("wt-fs", 1);
+      op.onupgradeneeded = function () { op.result.createObjectStore("kv"); };
+      op.onerror = function () { rej(op.error); };
+      op.onsuccess = function () {
+        try {
+          var db = op.result, tx = db.transaction("kv", mode), r = fn(tx.objectStore("kv"));
+          tx.oncomplete = function () { res(r && r.result); };
+          tx.onerror = function () { rej(tx.error); };
+        } catch (e) { rej(e); }
+      };
+    });
+  }
+  function idbGet(k) { return idbReq("readonly", function (st) { return st.get(k); }); }
+  function idbSet(k, v) { return idbReq("readwrite", function (st) { st.put(v, k); return null; }); }
+
+  async function pickFile() {
+    fileHandle = await window.showSaveFilePicker({
+      suggestedName: "workout-log.xlsx",
+      types: [{ description: "Excel workbook", accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] } }]
+    });
+    try { await idbSet("xlsxHandle", fileHandle); } catch (e) {}
+    return fileHandle;
+  }
+  async function writeToFile(bytes) {
+    var h = fileHandle || (await pickFile());
+    if ((await h.queryPermission({ mode: "readwrite" })) !== "granted") {
+      if ((await h.requestPermission({ mode: "readwrite" })) !== "granted") throw new Error("permission");
+    }
+    var w = await h.createWritable();
+    await w.write(bytes);
+    await w.close();
+    return h.name;
+  }
+
+  if (FSA) {
+    idbGet("xlsxHandle").then(function (h) { if (h) { fileHandle = h; if (view === "home") renderHome(); } }).catch(function () {});
   }
 
   function snapshotDay(day) {
@@ -759,16 +863,30 @@
     return exs;
   }
 
-  function saveSession(day) {
+  async function saveSession(day) {
     if (!day) return;
     var exs = snapshotDay(day);
     if (!exs.length) { toast("Add some reps or weight first."); return; }
     var date = todayISO();
+    // replace any earlier save of THIS workout on THIS day, so re-saving just updates it
     state.history = state.history.filter(function (s) { return !(s.date === date && s.dayId === day.id); });
     state.history.push({ id: uid(), date: date, dayId: day.id, dayName: day.name, exercises: exs });
     save();
-    toast("Saved " + (day.name || "workout") + " · " + date);
-    exportWorkbook();
+
+    var bytes = buildWorkbookBytes();   // built from history -> no duplicates
+    if (FSA) {
+      try {
+        var name = await writeToFile(bytes);
+        toast("Saved " + (day.name || "workout") + " → " + name);
+      } catch (e) {
+        if (e && e.name === "AbortError") { toast("Pick a file to save into, then tap Save again."); return; }
+        downloadBytes(bytes, "workout-log.xlsx");
+        toast("Saved " + (day.name || "workout") + " (downloaded)");
+      }
+    } else {
+      downloadBytes(bytes, "workout-log.xlsx");
+      toast("Saved (downloaded — this browser can’t update a file in place)");
+    }
   }
 
   // Android hardware back button -> go home instead of leaving the app

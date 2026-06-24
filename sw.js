@@ -1,5 +1,5 @@
 /* Service worker: caches the app shell so it works offline and is installable. */
-const CACHE = "workout-tracker-v3";
+const CACHE = "workout-tracker-v4";
 const ASSETS = [
   "./",
   "./index.html",
