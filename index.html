@@ -456,8 +456,15 @@
   }
   .plan-item { display: flex; gap: 8px; margin-bottom: 6px; }
   .pi-name { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; padding: 8px 10px; }
-  .pi-amt { width: 86px; flex-shrink: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; padding: 8px; text-align: center; }
+  .pi-amt  { width: 68px; flex-shrink: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; padding: 8px 6px; text-align: center; }
+  .pi-kcal { width: 62px; flex-shrink: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; padding: 8px 4px; text-align: center; }
+  .pi-kcal::-webkit-outer-spin-button, .pi-kcal::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .pi-kcal { -moz-appearance: textfield; }
   .ver-name:focus, .plan-item input:focus { outline: none; border-color: var(--accent); }
+  .ver-edit-head .ver-kcal { align-self: center; flex-shrink: 0; color: var(--accent); font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+  .meal-title { font-size: 27px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .meal-title .meal-kcal { font-size: 14px; font-weight: 700; color: var(--accent); }
 </style>
 </head>
 <body>
@@ -478,7 +485,8 @@
   var state = load();
   var section = "workout";  // "workout" | "meal"
   var view = "home";        // workout: "home" | "day"
-  var mealView = "log";     // meal: "log" | "plan"
+  var mealView = "home";    // meal: "home" | "detail" | "plan"
+  var activeSlotId = null;
   var activeDayId = null;
 
   function load() {
@@ -543,7 +551,8 @@
     ensureMealDayFresh();
     if (section === "meal") {
       if (mealView === "plan") renderMealPlan();
-      else renderMealLog();
+      else if (mealView === "detail" && getSlot(activeSlotId)) renderMealDetail(getSlot(activeSlotId));
+      else { mealView = "home"; renderMealHome(); }
     } else {
       if (view === "day" && getDay(activeDayId)) renderDay(getDay(activeDayId));
       else { view = "home"; renderHome(); }
@@ -682,14 +691,14 @@
     var slots = names.map(function (n) { return { id: uid(), name: n, versions: [] }; });
     if (seed) {
       slots[0].versions.push({ id: uid(), name: "Oats & eggs", items: [
-        { id: uid(), name: "Oats", amount: "50g" },
-        { id: uid(), name: "Eggs", amount: "3" },
-        { id: uid(), name: "Banana", amount: "1" }
+        { id: uid(), name: "Oats", amount: "50g", kcal: "190" },
+        { id: uid(), name: "Eggs", amount: "3", kcal: "220" },
+        { id: uid(), name: "Banana", amount: "1", kcal: "90" }
       ] });
       slots[1].versions.push({ id: uid(), name: "Chicken & rice", items: [
-        { id: uid(), name: "Chicken breast", amount: "200g" },
-        { id: uid(), name: "Rice", amount: "1 cup" },
-        { id: uid(), name: "Salad", amount: "" }
+        { id: uid(), name: "Chicken breast", amount: "200g", kcal: "330" },
+        { id: uid(), name: "Rice", amount: "1 cup", kcal: "205" },
+        { id: uid(), name: "Salad", amount: "", kcal: "40" }
       ] });
     }
     return { slots: slots };
@@ -705,57 +714,98 @@
     return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
   }
 
-  function renderMealLog() {
+  function versionKcal(v) { return v ? v.items.reduce(function (a, it) { var k = numOrNull(it.kcal); return a + (k || 0); }, 0) : 0; }
+  function displayVersion(slot) {
+    var sel = state.mealDay.sel[slot.id];
+    if (sel && sel.versionId) { var v = getVersion(slot, sel.versionId); if (v) return v; }
+    return slot.versions[0] || null;
+  }
+
+  function renderMealHome() {
     var html = '<div class="appbar">' +
-      '<h1 class="title grow">Meal log</h1>' +
+      '<h1 class="title grow">Meals</h1>' +
       '<button class="pill-btn" data-action="saveMeal">Save</button>' +
       '<button class="pill-btn ghost" data-action="gotoPlan">Edit plan</button>' +
       '</div>';
-    html += '<div class="home-sub">' + esc(prettyDate(state.mealDay.date)) + ' · tick what you ate, set the amount</div>';
+    var dayTotal = 0;
+    state.meals.slots.forEach(function (s) { dayTotal += versionKcal(displayVersion(s)); });
+    html += '<div class="home-sub">' + esc(prettyDate(state.mealDay.date)) +
+      (dayTotal ? ' · ' + dayTotal.toLocaleString() + ' kcal' : '') + '</div>';
     if (FSA) {
       html += handles.diet
         ? '<div class="file-row"><span>Saving to <b>' + esc(handles.diet.name) + '</b></span><button class="link-btn" data-action="relinkDiet">change file</button></div>'
         : '<div class="file-row"><span>Your first meal Save will ask where to keep diet-log.xlsx.</span><button class="link-btn" data-action="relinkDiet">choose now</button></div>';
     }
-    state.meals.slots.forEach(function (slot) {
-      var sel = ensureSel(slot.id);
-      html += '<div class="slot"><div class="slot-head">' + esc(slot.name) + '</div>';
-      html += '<div class="ver-pills">';
-      html += '<button class="ver-pill' + (sel.versionId === "" ? " active" : "") + '" data-action="selVer" data-slot="' + slot.id + '" data-ver="">None</button>';
-      slot.versions.forEach(function (v) {
-        html += '<button class="ver-pill' + (sel.versionId === v.id ? " active" : "") + '" data-action="selVer" data-slot="' + slot.id + '" data-ver="' + v.id + '">' + esc(v.name || "Untitled") + '</button>';
-      });
-      html += '</div>';
-      if (!slot.versions.length) html += '<div class="ver-hint">No versions yet — add them in “Edit plan”.</div>';
+    var PAL = ["#34d399", "#f59e0b", "#4f8cff", "#f472b6", "#a78bfa", "#22d3ee"];
+    var FORK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v4a2 2 0 0 0 4 0V3M7 7v14M16 3v18M16 3c-1.7.4-2.7 2.2-2.7 4.6 0 1.6 1.1 2.6 2.7 2.6"/></svg>';
+    var CHEV = '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+    html += '<div class="grid">';
+    state.meals.slots.forEach(function (slot, i) {
+      var kcal = versionKcal(displayVersion(slot));
+      var sub = slot.versions.length ? (kcal ? kcal.toLocaleString() + " kcal" : "No calories set") : "No versions yet";
+      html += '<div class="card" data-action="openMeal" data-slot="' + slot.id + '" style="--c:' + PAL[i % PAL.length] + '">' +
+        CHEV + '<div class="ic">' + FORK + '</div><div class="spacer"></div>' +
+        '<div class="card-name">' + esc(slot.name) + '</div>' +
+        '<div class="card-sub">' + esc(sub) + '</div></div>';
+    });
+    html += '</div>';
+    app.innerHTML = html;
+  }
 
-      var version = sel.versionId ? getVersion(slot, sel.versionId) : null;
-      if (version) {
-        version.items.forEach(function (it) {
-          var ie = sel.items[it.id] || { eaten: true, qty: "" };
-          html += '<div class="item-row">' +
-            '<button class="check' + (ie.eaten ? " checked" : "") + '" data-action="toggleItem" data-slot="' + slot.id + '" data-item="' + it.id + '" aria-label="ate this"></button>' +
-            '<div class="item-name' + (ie.eaten ? "" : " off") + '">' + esc(it.name || "Item") +
-              (it.amount ? '<span class="plan-amt">' + esc(it.amount) + '</span>' : '') + '</div>' +
-            '<input class="qty" data-kind="itemqty" data-slot="' + slot.id + '" data-item="' + it.id + '" value="' + esc(ie.qty) + '" placeholder="' + esc(it.amount || "qty") + '" />' +
-            '</div>';
-        });
-      }
-      (sel.extras || []).forEach(function (x) {
+  function mealItemsHtml(slot, sel) {
+    var version = sel.versionId ? getVersion(slot, sel.versionId) : null;
+    var html = '';
+    if (version) {
+      version.items.forEach(function (it) {
+        var ie = sel.items[it.id] || { eaten: true, qty: "" };
+        var meta = [it.amount, (numOrNull(it.kcal) != null ? it.kcal + " kcal" : "")].filter(Boolean).join(" · ");
         html += '<div class="item-row">' +
-          '<input class="extra-name" data-kind="extraname" data-slot="' + slot.id + '" data-extra="' + x.id + '" value="' + esc(x.name) + '" placeholder="Extra item (today only)" />' +
-          '<input class="qty" data-kind="extraqty" data-slot="' + slot.id + '" data-extra="' + x.id + '" value="' + esc(x.qty) + '" placeholder="qty" />' +
-          '<button class="icon-btn danger" data-action="delExtra" data-slot="' + slot.id + '" data-extra="' + x.id + '">✕</button>' +
+          '<button class="check' + (ie.eaten ? " checked" : "") + '" data-action="toggleItem" data-slot="' + slot.id + '" data-item="' + it.id + '" aria-label="ate this"></button>' +
+          '<div class="item-name' + (ie.eaten ? "" : " off") + '">' + esc(it.name || "Item") +
+            (meta ? '<span class="plan-amt">' + esc(meta) + '</span>' : '') + '</div>' +
+          '<input class="qty" data-kind="itemqty" data-slot="' + slot.id + '" data-item="' + it.id + '" value="' + esc(ie.qty) + '" placeholder="' + esc(it.amount || "qty") + '" />' +
           '</div>';
       });
-      html += '<button class="text-btn" data-action="addExtra" data-slot="' + slot.id + '">+ add extra (today only)</button>';
-      html += '</div>';
+    }
+    (sel.extras || []).forEach(function (x) {
+      html += '<div class="item-row">' +
+        '<input class="extra-name" data-kind="extraname" data-slot="' + slot.id + '" data-extra="' + x.id + '" value="' + esc(x.name) + '" placeholder="Extra item (today only)" />' +
+        '<input class="qty" data-kind="extraqty" data-slot="' + slot.id + '" data-extra="' + x.id + '" value="' + esc(x.qty) + '" placeholder="qty" />' +
+        '<button class="icon-btn danger" data-action="delExtra" data-slot="' + slot.id + '" data-extra="' + x.id + '">✕</button>' +
+        '</div>';
     });
+    return html;
+  }
+
+  function renderMealDetail(slot) {
+    var sel = ensureSel(slot.id);
+    var version = sel.versionId ? getVersion(slot, sel.versionId) : null;
+    var kcal = versionKcal(version || displayVersion(slot));
+
+    var html = '<div class="appbar">' +
+      '<button class="back-btn" data-action="mealHome">‹ Meals</button>' +
+      '<span class="grow"></span>' +
+      '<button class="pill-btn" data-action="saveMeal">Save</button>' +
+      '</div>';
+    html += '<div class="meal-title">' + esc(slot.name) +
+      (kcal ? '<span class="meal-kcal">' + kcal.toLocaleString() + ' kcal</span>' : '') + '</div>';
+
+    html += '<div class="slot"><div class="ver-pills">';
+    html += '<button class="ver-pill' + (sel.versionId === "" ? " active" : "") + '" data-action="selVer" data-slot="' + slot.id + '" data-ver="">None</button>';
+    slot.versions.forEach(function (v) {
+      html += '<button class="ver-pill' + (sel.versionId === v.id ? " active" : "") + '" data-action="selVer" data-slot="' + slot.id + '" data-ver="' + v.id + '">' + esc(v.name || "Untitled") + '</button>';
+    });
+    html += '</div>';
+    if (!slot.versions.length) html += '<div class="ver-hint">No versions yet — add them in “Edit plan”.</div>';
+    html += mealItemsHtml(slot, sel);
+    html += '<button class="text-btn" data-action="addExtra" data-slot="' + slot.id + '">+ add extra (today only)</button>';
+    html += '</div>';
     app.innerHTML = html;
   }
 
   function renderMealPlan() {
     var html = '<div class="appbar">' +
-      '<button class="back-btn" data-action="gotoLog">‹ Back</button>' +
+      '<button class="back-btn" data-action="mealHome">‹ Back</button>' +
       '<span class="grow"></span>' +
       '</div>';
     html += '<div class="day-name" style="font-size:24px">Edit meal plan</div>';
@@ -765,12 +815,14 @@
       slot.versions.forEach(function (v) {
         html += '<div class="ver-edit"><div class="ver-edit-head">' +
           '<input class="ver-name" data-kind="vername" data-slot="' + slot.id + '" data-ver="' + v.id + '" value="' + esc(v.name) + '" placeholder="Version name (e.g. Oats & eggs)" />' +
+          (versionKcal(v) ? '<span class="ver-kcal">' + versionKcal(v).toLocaleString() + ' kcal</span>' : '') +
           '<button class="icon-btn danger" data-action="delVer" data-slot="' + slot.id + '" data-ver="' + v.id + '" title="Delete version">🗑</button>' +
           '</div>';
         v.items.forEach(function (it) {
           html += '<div class="plan-item">' +
             '<input class="pi-name" data-kind="itemname" data-slot="' + slot.id + '" data-ver="' + v.id + '" data-item="' + it.id + '" value="' + esc(it.name) + '" placeholder="Item" />' +
-            '<input class="pi-amt" data-kind="itemamt" data-slot="' + slot.id + '" data-ver="' + v.id + '" data-item="' + it.id + '" value="' + esc(it.amount) + '" placeholder="amount" />' +
+            '<input class="pi-amt" data-kind="itemamt" data-slot="' + slot.id + '" data-ver="' + v.id + '" data-item="' + it.id + '" value="' + esc(it.amount) + '" placeholder="qty" />' +
+            '<input class="pi-kcal" type="number" inputmode="numeric" min="0" data-kind="itemkcal" data-slot="' + slot.id + '" data-ver="' + v.id + '" data-item="' + it.id + '" value="' + esc(it.kcal) + '" placeholder="kcal" />' +
             '<button class="icon-btn danger" data-action="delPItem" data-slot="' + slot.id + '" data-ver="' + v.id + '" data-item="' + it.id + '">✕</button>' +
             '</div>';
         });
@@ -846,7 +898,8 @@
 
     // ----- meal actions -----
     else if (a === "gotoPlan") { mealView = "plan"; history.pushState(null, ""); render(); }
-    else if (a === "gotoLog")  { mealView = "log"; render(); }
+    else if (a === "mealHome") { mealView = "home"; render(); }
+    else if (a === "openMeal") { activeSlotId = btn.dataset.slot; mealView = "detail"; history.pushState(null, ""); render(); }
     else if (a === "selVer") {
       var sl = getSlot(btn.dataset.slot), sel = ensureSel(sl.id);
       sel.versionId = btn.dataset.ver; sel.items = {};
@@ -904,6 +957,7 @@
     else if (kind === "vername")   { var vn = getVersion(getSlot(t.dataset.slot), t.dataset.ver); if (vn) vn.name = t.value; }
     else if (kind === "itemname")  { var in1 = getVItem(getVersion(getSlot(t.dataset.slot), t.dataset.ver), t.dataset.item); if (in1) in1.name = t.value; }
     else if (kind === "itemamt")   { var ia = getVItem(getVersion(getSlot(t.dataset.slot), t.dataset.ver), t.dataset.item); if (ia) ia.amount = t.value; }
+    else if (kind === "itemkcal")  { var ik = getVItem(getVersion(getSlot(t.dataset.slot), t.dataset.ver), t.dataset.item); if (ik) ik.kcal = t.value; }
     save();
   });
 
@@ -1061,7 +1115,7 @@
   function cellStr(ref, val) { return (val === "" || val == null) ? "" : '<c r="' + ref + '" t="inlineStr"><is><t>' + xe(val) + '</t></is></c>'; }
 
   function dietSheetXml() {
-    var head = ["Date", "Meal", "Version", "Item", "Qty", "Eaten", "Off-plan"], cols = ["A", "B", "C", "D", "E", "F", "G"];
+    var head = ["Date", "Meal", "Version", "Item", "Qty", "Kcal", "Eaten", "Off-plan"], cols = ["A", "B", "C", "D", "E", "F", "G", "H"];
     var b = '<row r="1">';
     head.forEach(function (h, i) { b += '<c r="' + cols[i] + '1" s="1" t="inlineStr"><is><t>' + h + '</t></is></c>'; });
     b += '</row>';
@@ -1070,14 +1124,15 @@
     sorted.forEach(function (day) {
       var serial = dateSerial(day.date);
       (day.entries || []).forEach(function (en) {
-        function rowOut(meal, version, item, qty, eaten, off) {
+        function rowOut(meal, version, item, qty, kcal, eaten, off) {
           b += '<row r="' + r + '"><c r="A' + r + '" s="2"><v>' + serial + '</v></c>' +
-            cellStr("B" + r, meal) + cellStr("C" + r, version) + cellStr("D" + r, item) +
-            cellStr("E" + r, qty) + cellStr("F" + r, eaten) + cellStr("G" + r, off) + '</row>';
+            cellStr("B" + r, meal) + cellStr("C" + r, version) + cellStr("D" + r, item) + cellStr("E" + r, qty) +
+            ((kcal == null || kcal === "") ? "" : '<c r="F' + r + '"><v>' + kcal + '</v></c>') +
+            cellStr("G" + r, eaten) + cellStr("H" + r, off) + '</row>';
           r++;
         }
-        (en.items || []).forEach(function (it) { rowOut(en.slot, en.version, it.name, it.qty, it.eaten ? "Yes" : "No", "No"); });
-        (en.extras || []).forEach(function (x) { rowOut(en.slot, "", x.name, x.qty, "Yes", "Yes"); });
+        (en.items || []).forEach(function (it) { rowOut(en.slot, en.version, it.name, it.qty, it.kcal, it.eaten ? "Yes" : "No", "No"); });
+        (en.extras || []).forEach(function (x) { rowOut(en.slot, "", x.name, x.qty, null, "Yes", "Yes"); });
         r++; // blank row between meals
       });
       r++; // extra blank row between days
@@ -1086,7 +1141,7 @@
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
       '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>' +
       '<sheetFormatPr defaultRowHeight="15"/>' +
-      '<cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="2" width="14" customWidth="1"/><col min="3" max="3" width="16" customWidth="1"/><col min="4" max="4" width="22" customWidth="1"/><col min="5" max="5" width="9" customWidth="1"/><col min="6" max="6" width="8" customWidth="1"/><col min="7" max="7" width="9" customWidth="1"/></cols>' +
+      '<cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="2" width="14" customWidth="1"/><col min="3" max="3" width="16" customWidth="1"/><col min="4" max="4" width="22" customWidth="1"/><col min="5" max="5" width="9" customWidth="1"/><col min="6" max="6" width="7" customWidth="1"/><col min="7" max="7" width="8" customWidth="1"/><col min="8" max="8" width="9" customWidth="1"/></cols>' +
       '<sheetData>' + b + '</sheetData></worksheet>';
   }
 
@@ -1216,7 +1271,7 @@
       if (version) {
         version.items.forEach(function (it) {
           var ie = sel.items[it.id] || { eaten: true, qty: "" };
-          items.push({ name: (it.name || "").trim() || "(item)", qty: (ie.qty || "").trim(), eaten: !!ie.eaten });
+          items.push({ name: (it.name || "").trim() || "(item)", qty: (ie.qty || "").trim(), kcal: numOrNull(it.kcal), eaten: !!ie.eaten });
         });
       }
       var extras = (sel.extras || []).filter(function (x) { return (x.name || "").trim(); })
@@ -1253,7 +1308,7 @@
 
   // Android hardware back button -> step back one level instead of leaving the app
   window.addEventListener("popstate", function () {
-    if (section === "meal" && mealView === "plan") { mealView = "log"; render(); }
+    if (section === "meal" && (mealView === "plan" || mealView === "detail")) { mealView = "home"; render(); }
     else if (section === "workout" && view === "day") { view = "home"; render(); }
     history.pushState(null, "");
   });
