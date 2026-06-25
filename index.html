@@ -49,7 +49,7 @@
   .wrap {
     max-width: 760px;
     margin: 0 auto;
-    padding: calc(14px + var(--safe-t)) 16px calc(90px + var(--safe-b));
+    padding: calc(14px + var(--safe-t)) 16px calc(86px + var(--safe-b));
   }
 
   /* ===================== shared top bar ===================== */
@@ -346,7 +346,7 @@
   .toast {
     position: fixed;
     left: 50%;
-    bottom: calc(24px + var(--safe-b));
+    bottom: calc(80px + var(--safe-b));
     transform: translateX(-50%) translateY(18px);
     background: var(--panel-2);
     border: 1px solid var(--border);
@@ -378,10 +378,94 @@
     color: var(--accent); font-size: 12px; font-weight: 700;
     cursor: pointer; padding: 2px;
   }
+
+  /* ===================== bottom nav ===================== */
+  .bottomnav {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 50;
+    display: flex;
+    background: rgba(20,23,28,.93);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    padding-bottom: var(--safe-b);
+  }
+  .bottomnav button {
+    flex: 1;
+    background: none; border: none;
+    color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 9px 0 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: .02em;
+    cursor: pointer;
+  }
+  .bottomnav button svg { width: 24px; height: 24px; }
+  .bottomnav button.active { color: var(--accent); }
+
+  /* ===================== meal section ===================== */
+  .slot {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 12px 12px;
+    margin-bottom: 14px;
+  }
+  .slot-head { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+  .ver-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .ver-pill {
+    background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--muted); border-radius: 999px;
+    padding: 8px 13px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+  .ver-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ver-hint { color: var(--muted); font-size: 12px; margin: 2px 0 4px; }
+
+  .item-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+  .check {
+    width: 25px; height: 25px; flex-shrink: 0;
+    border-radius: 7px; border: 2px solid var(--border);
+    background: var(--panel-2); cursor: pointer; position: relative;
+  }
+  .check.checked { background: var(--accent); border-color: var(--accent); }
+  .check.checked::after {
+    content: ""; position: absolute; left: 8px; top: 3px;
+    width: 6px; height: 11px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+  }
+  .item-name { flex: 1; min-width: 0; font-size: 15px; }
+  .item-name .plan-amt { color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .item-name.off { color: var(--muted); text-decoration: line-through; }
+  input.qty {
+    width: 76px; flex-shrink: 0;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-size: 16px; padding: 8px; text-align: center;
+  }
+  input.qty:focus { outline: none; border-color: var(--accent); }
+  .extra-name {
+    flex: 1; min-width: 0;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 15px; padding: 9px 10px;
+  }
+  .extra-name:focus { outline: none; border-color: var(--accent); }
+
+  .ver-edit { border: 1px solid var(--border); border-radius: 11px; padding: 10px; margin-bottom: 10px; background: var(--panel-2); }
+  .ver-edit-head { display: flex; gap: 8px; margin-bottom: 8px; }
+  .ver-name {
+    flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 15px; font-weight: 700; padding: 9px 10px;
+  }
+  .plan-item { display: flex; gap: 8px; margin-bottom: 6px; }
+  .pi-name { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; padding: 8px 10px; }
+  .pi-amt { width: 86px; flex-shrink: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; padding: 8px; text-align: center; }
+  .ver-name:focus, .plan-item input:focus { outline: none; border-color: var(--accent); }
 </style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
+<nav class="bottomnav" id="bottomnav">
+  <button data-nav="workout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7v10M3.5 9.5v5M17.5 7v10M20.5 9.5v5M6.5 12h11"/></svg><span>Workout</span></button>
+  <button data-nav="meal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v4a2 2 0 0 0 4 0V3M7 7v14M16 3v18M16 3c-1.7.4-2.7 2.2-2.7 4.6 0 1.6 1.1 2.6 2.7 2.6"/></svg><span>Meal</span></button>
+</nav>
 
 <script>
 (function () {
@@ -392,7 +476,9 @@
 
   // ---------- state ----------
   var state = load();
-  var view = "home";        // "home" | "day"  (navigation is per-session)
+  var section = "workout";  // "workout" | "meal"
+  var view = "home";        // workout: "home" | "day"
+  var mealView = "log";     // meal: "log" | "plan"
   var activeDayId = null;
 
   function load() {
@@ -403,6 +489,9 @@
         if (!s.unit) s.unit = "kg";
         if (!Array.isArray(s.days)) s.days = [];
         if (!Array.isArray(s.history)) s.history = [];
+        if (!s.meals) s.meals = defaultMeals(true);
+        if (!Array.isArray(s.mealHistory)) s.mealHistory = [];
+        if (!s.mealDay || !s.mealDay.sel) s.mealDay = { date: todayISO(), sel: {} };
         return s;
       }
     } catch (e) {}
@@ -410,6 +499,9 @@
     return {
       unit: "kg",
       history: [],
+      mealHistory: [],
+      meals: defaultMeals(true),
+      mealDay: { date: todayISO(), sel: {} },
       days: [
         {
           id: uid(), name: "Push Day",
@@ -448,9 +540,23 @@
 
   // ---------- render ----------
   function render() {
-    if (view === "day" && getDay(activeDayId)) renderDay(getDay(activeDayId));
-    else { view = "home"; renderHome(); }
+    ensureMealDayFresh();
+    if (section === "meal") {
+      if (mealView === "plan") renderMealPlan();
+      else renderMealLog();
+    } else {
+      if (view === "day" && getDay(activeDayId)) renderDay(getDay(activeDayId));
+      else { view = "home"; renderHome(); }
+    }
+    renderNav();
     save();
+  }
+
+  function renderNav() {
+    var nav = document.getElementById("bottomnav");
+    [].forEach.call(nav.querySelectorAll("button"), function (b) {
+      b.classList.toggle("active", b.dataset.nav === section);
+    });
   }
 
   function unitToggleHTML() {
@@ -482,8 +588,8 @@
     html += '<div class="home-sub">Tap a workout to open it.' +
       (saved ? ' · ' + saved + (saved === 1 ? ' session saved' : ' sessions saved') : '') + '</div>';
     if (FSA) {
-      html += fileHandle
-        ? '<div class="file-row"><span>Saving to <b>' + esc(fileHandle.name) + '</b></span><button class="link-btn" data-action="relink">change file</button></div>'
+      html += handles.workout
+        ? '<div class="file-row"><span>Saving to <b>' + esc(handles.workout.name) + '</b></span><button class="link-btn" data-action="relink">change file</button></div>'
         : '<div class="file-row"><span>Your first Save will ask where to keep your Excel file.</span><button class="link-btn" data-action="relink">choose now</button></div>';
     } else {
       html += '<div class="file-row"><span>This browser saves by downloading a copy each time.</span></div>';
@@ -570,6 +676,121 @@
     app.innerHTML = html;
   }
 
+  // ===================== meal section =====================
+  function defaultMeals(seed) {
+    var names = ["Breakfast", "Lunch", "Pre-workout", "Evening snack", "Dinner", "Post-dinner"];
+    var slots = names.map(function (n) { return { id: uid(), name: n, versions: [] }; });
+    if (seed) {
+      slots[0].versions.push({ id: uid(), name: "Oats & eggs", items: [
+        { id: uid(), name: "Oats", amount: "50g" },
+        { id: uid(), name: "Eggs", amount: "3" },
+        { id: uid(), name: "Banana", amount: "1" }
+      ] });
+      slots[1].versions.push({ id: uid(), name: "Chicken & rice", items: [
+        { id: uid(), name: "Chicken breast", amount: "200g" },
+        { id: uid(), name: "Rice", amount: "1 cup" },
+        { id: uid(), name: "Salad", amount: "" }
+      ] });
+    }
+    return { slots: slots };
+  }
+
+  function getSlot(id)         { return state.meals.slots.find(function (s) { return s.id === id; }); }
+  function getVersion(slot, id){ return slot && slot.versions.find(function (v) { return v.id === id; }); }
+  function getVItem(ver, id)   { return ver && ver.items.find(function (it) { return it.id === id; }); }
+  function ensureSel(slotId)   { var d = state.mealDay; if (!d.sel[slotId]) d.sel[slotId] = { versionId: "", items: {}, extras: [] }; return d.sel[slotId]; }
+  function ensureMealDayFresh(){ var t = todayISO(); if (!state.mealDay || state.mealDay.date !== t) state.mealDay = { date: t, sel: {} }; }
+  function prettyDate(iso) {
+    var p = iso.split("-"), d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
+  }
+
+  function renderMealLog() {
+    var html = '<div class="appbar">' +
+      '<h1 class="title grow">Meal log</h1>' +
+      '<button class="pill-btn" data-action="saveMeal">Save</button>' +
+      '<button class="pill-btn ghost" data-action="gotoPlan">Edit plan</button>' +
+      '</div>';
+    html += '<div class="home-sub">' + esc(prettyDate(state.mealDay.date)) + ' · tick what you ate, set the amount</div>';
+    if (FSA) {
+      html += handles.diet
+        ? '<div class="file-row"><span>Saving to <b>' + esc(handles.diet.name) + '</b></span><button class="link-btn" data-action="relinkDiet">change file</button></div>'
+        : '<div class="file-row"><span>Your first meal Save will ask where to keep diet-log.xlsx.</span><button class="link-btn" data-action="relinkDiet">choose now</button></div>';
+    }
+    state.meals.slots.forEach(function (slot) {
+      var sel = ensureSel(slot.id);
+      html += '<div class="slot"><div class="slot-head">' + esc(slot.name) + '</div>';
+      html += '<div class="ver-pills">';
+      html += '<button class="ver-pill' + (sel.versionId === "" ? " active" : "") + '" data-action="selVer" data-slot="' + slot.id + '" data-ver="">None</button>';
+      slot.versions.forEach(function (v) {
+        html += '<button class="ver-pill' + (sel.versionId === v.id ? " active" : "") + '" data-action="selVer" data-slot="' + slot.id + '" data-ver="' + v.id + '">' + esc(v.name || "Untitled") + '</button>';
+      });
+      html += '</div>';
+      if (!slot.versions.length) html += '<div class="ver-hint">No versions yet — add them in “Edit plan”.</div>';
+
+      var version = sel.versionId ? getVersion(slot, sel.versionId) : null;
+      if (version) {
+        version.items.forEach(function (it) {
+          var ie = sel.items[it.id] || { eaten: true, qty: "" };
+          html += '<div class="item-row">' +
+            '<button class="check' + (ie.eaten ? " checked" : "") + '" data-action="toggleItem" data-slot="' + slot.id + '" data-item="' + it.id + '" aria-label="ate this"></button>' +
+            '<div class="item-name' + (ie.eaten ? "" : " off") + '">' + esc(it.name || "Item") +
+              (it.amount ? '<span class="plan-amt">' + esc(it.amount) + '</span>' : '') + '</div>' +
+            '<input class="qty" data-kind="itemqty" data-slot="' + slot.id + '" data-item="' + it.id + '" value="' + esc(ie.qty) + '" placeholder="' + esc(it.amount || "qty") + '" />' +
+            '</div>';
+        });
+      }
+      (sel.extras || []).forEach(function (x) {
+        html += '<div class="item-row">' +
+          '<input class="extra-name" data-kind="extraname" data-slot="' + slot.id + '" data-extra="' + x.id + '" value="' + esc(x.name) + '" placeholder="Extra item (today only)" />' +
+          '<input class="qty" data-kind="extraqty" data-slot="' + slot.id + '" data-extra="' + x.id + '" value="' + esc(x.qty) + '" placeholder="qty" />' +
+          '<button class="icon-btn danger" data-action="delExtra" data-slot="' + slot.id + '" data-extra="' + x.id + '">✕</button>' +
+          '</div>';
+      });
+      html += '<button class="text-btn" data-action="addExtra" data-slot="' + slot.id + '">+ add extra (today only)</button>';
+      html += '</div>';
+    });
+    app.innerHTML = html;
+  }
+
+  function renderMealPlan() {
+    var html = '<div class="appbar">' +
+      '<button class="back-btn" data-action="gotoLog">‹ Back</button>' +
+      '<span class="grow"></span>' +
+      '</div>';
+    html += '<div class="day-name" style="font-size:24px">Edit meal plan</div>';
+    html += '<div class="home-sub" style="margin-top:-8px">Create versions of each meal — these are permanent.</div>';
+    state.meals.slots.forEach(function (slot) {
+      html += '<div class="slot"><div class="slot-head">' + esc(slot.name) + '</div>';
+      slot.versions.forEach(function (v) {
+        html += '<div class="ver-edit"><div class="ver-edit-head">' +
+          '<input class="ver-name" data-kind="vername" data-slot="' + slot.id + '" data-ver="' + v.id + '" value="' + esc(v.name) + '" placeholder="Version name (e.g. Oats & eggs)" />' +
+          '<button class="icon-btn danger" data-action="delVer" data-slot="' + slot.id + '" data-ver="' + v.id + '" title="Delete version">🗑</button>' +
+          '</div>';
+        v.items.forEach(function (it) {
+          html += '<div class="plan-item">' +
+            '<input class="pi-name" data-kind="itemname" data-slot="' + slot.id + '" data-ver="' + v.id + '" data-item="' + it.id + '" value="' + esc(it.name) + '" placeholder="Item" />' +
+            '<input class="pi-amt" data-kind="itemamt" data-slot="' + slot.id + '" data-ver="' + v.id + '" data-item="' + it.id + '" value="' + esc(it.amount) + '" placeholder="amount" />' +
+            '<button class="icon-btn danger" data-action="delPItem" data-slot="' + slot.id + '" data-ver="' + v.id + '" data-item="' + it.id + '">✕</button>' +
+            '</div>';
+        });
+        html += '<button class="text-btn" data-action="addItem" data-slot="' + slot.id + '" data-ver="' + v.id + '">+ add item</button>';
+        html += '</div>';
+      });
+      html += '<button class="add-exercise" data-action="addVer" data-slot="' + slot.id + '">+ add ' + esc(slot.name.toLowerCase()) + ' version</button>';
+      html += '</div>';
+    });
+    app.innerHTML = html;
+  }
+
+  // bottom nav switches section
+  document.getElementById("bottomnav").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-nav]");
+    if (!b) return;
+    section = b.dataset.nav;
+    render();
+  });
+
   // ---------- clicks ----------
   app.addEventListener("click", function (e) {
     // unit toggle (present in both views)
@@ -621,7 +842,44 @@
     }
     else if (a === "save")   { saveSession(getDay(btn.dataset.day) || day); }
     else if (a === "export") { exportDownload(); }
-    else if (a === "relink") { pickFile().then(function () { render(); toast("Saving to " + fileHandle.name); }).catch(function () {}); }
+    else if (a === "relink") { pickFile("workout").then(function () { render(); toast("Saving to " + handles.workout.name); }).catch(function () {}); }
+
+    // ----- meal actions -----
+    else if (a === "gotoPlan") { mealView = "plan"; history.pushState(null, ""); render(); }
+    else if (a === "gotoLog")  { mealView = "log"; render(); }
+    else if (a === "selVer") {
+      var sl = getSlot(btn.dataset.slot), sel = ensureSel(sl.id);
+      sel.versionId = btn.dataset.ver; sel.items = {};
+      if (sel.versionId) { var v = getVersion(sl, sel.versionId); if (v) v.items.forEach(function (it) { sel.items[it.id] = { eaten: true, qty: "" }; }); }
+      render();
+    }
+    else if (a === "toggleItem") {
+      var se = ensureSel(btn.dataset.slot);
+      se.items[btn.dataset.item] = se.items[btn.dataset.item] || { eaten: true, qty: "" };
+      se.items[btn.dataset.item].eaten = !se.items[btn.dataset.item].eaten;
+      render();
+    }
+    else if (a === "addExtra") { ensureSel(btn.dataset.slot).extras.push({ id: uid(), name: "", qty: "" }); render(); }
+    else if (a === "delExtra") {
+      var se2 = ensureSel(btn.dataset.slot);
+      se2.extras = se2.extras.filter(function (x) { return x.id !== btn.dataset.extra; });
+      render();
+    }
+    else if (a === "saveMeal")   { saveMealDay(); }
+    else if (a === "relinkDiet") { pickFile("diet").then(function () { render(); toast("Saving meals to " + handles.diet.name); }).catch(function () {}); }
+    else if (a === "addVer")  { getSlot(btn.dataset.slot).versions.push({ id: uid(), name: "", items: [ { id: uid(), name: "", amount: "" } ] }); render(); }
+    else if (a === "delVer")  {
+      if (!confirm("Delete this version?")) return;
+      var sl3 = getSlot(btn.dataset.slot);
+      sl3.versions = sl3.versions.filter(function (v) { return v.id !== btn.dataset.ver; });
+      render();
+    }
+    else if (a === "addItem") { getVersion(getSlot(btn.dataset.slot), btn.dataset.ver).items.push({ id: uid(), name: "", amount: "" }); render(); }
+    else if (a === "delPItem") {
+      var v3 = getVersion(getSlot(btn.dataset.slot), btn.dataset.ver);
+      v3.items = v3.items.filter(function (it) { return it.id !== btn.dataset.item; });
+      render();
+    }
   });
 
   // ---------- field edits (update without re-render to keep focus) ----------
@@ -636,6 +894,16 @@
       var set = getSet(getEx(day, t.dataset.ex), t.dataset.set);
       var dr = getDrop(set, t.dataset.drop); if (dr) dr[t.dataset.field] = t.value;
     }
+    else if (kind === "itemqty") {
+      var se = ensureSel(t.dataset.slot);
+      se.items[t.dataset.item] = se.items[t.dataset.item] || { eaten: true, qty: "" };
+      se.items[t.dataset.item].qty = t.value;
+    }
+    else if (kind === "extraname") { var x = ensureSel(t.dataset.slot).extras.find(function (e2) { return e2.id === t.dataset.extra; }); if (x) x.name = t.value; }
+    else if (kind === "extraqty")  { var x2 = ensureSel(t.dataset.slot).extras.find(function (e2) { return e2.id === t.dataset.extra; }); if (x2) x2.qty = t.value; }
+    else if (kind === "vername")   { var vn = getVersion(getSlot(t.dataset.slot), t.dataset.ver); if (vn) vn.name = t.value; }
+    else if (kind === "itemname")  { var in1 = getVItem(getVersion(getSlot(t.dataset.slot), t.dataset.ver), t.dataset.item); if (in1) in1.name = t.value; }
+    else if (kind === "itemamt")   { var ia = getVItem(getVersion(getSlot(t.dataset.slot), t.dataset.ver), t.dataset.item); if (ia) ia.amount = t.value; }
     save();
   });
 
@@ -754,13 +1022,11 @@
     return { order: order, map: map };
   }
 
-  function buildWorkbookBytes() {
-    var agg = buildExerciseMap();
-    if (!agg.order.length) return null;
-
+  // assemble a workbook from [{ title, xml }] sheets -> .xlsx bytes
+  function assembleWorkbook(sheets) {
     var used = {}, meta = [];
-    agg.order.forEach(function (name, idx) {
-      meta.push({ file: "sheet" + (idx + 1) + ".xml", rid: "rId" + (idx + 1), title: safeSheetName(name, used), xml: sheetXml(agg.map[name]) });
+    sheets.forEach(function (s, idx) {
+      meta.push({ file: "sheet" + (idx + 1) + ".xml", rid: "rId" + (idx + 1), title: safeSheetName(s.title, used), xml: s.xml });
     });
     var styRid = "rId" + (meta.length + 1);
 
@@ -785,6 +1051,50 @@
     return zipStore(files);
   }
 
+  function buildWorkbookBytes() {
+    var agg = buildExerciseMap();
+    if (!agg.order.length) return null;
+    return assembleWorkbook(agg.order.map(function (name) { return { title: name, xml: sheetXml(agg.map[name]) }; }));
+  }
+
+  // ----- diet workbook: one "Diet" sheet, blank row between meals, two between days -----
+  function cellStr(ref, val) { return (val === "" || val == null) ? "" : '<c r="' + ref + '" t="inlineStr"><is><t>' + xe(val) + '</t></is></c>'; }
+
+  function dietSheetXml() {
+    var head = ["Date", "Meal", "Version", "Item", "Qty", "Eaten", "Off-plan"], cols = ["A", "B", "C", "D", "E", "F", "G"];
+    var b = '<row r="1">';
+    head.forEach(function (h, i) { b += '<c r="' + cols[i] + '1" s="1" t="inlineStr"><is><t>' + h + '</t></is></c>'; });
+    b += '</row>';
+    var r = 2;
+    var sorted = state.mealHistory.slice().sort(function (a, b2) { return a.date < b2.date ? -1 : a.date > b2.date ? 1 : 0; });
+    sorted.forEach(function (day) {
+      var serial = dateSerial(day.date);
+      (day.entries || []).forEach(function (en) {
+        function rowOut(meal, version, item, qty, eaten, off) {
+          b += '<row r="' + r + '"><c r="A' + r + '" s="2"><v>' + serial + '</v></c>' +
+            cellStr("B" + r, meal) + cellStr("C" + r, version) + cellStr("D" + r, item) +
+            cellStr("E" + r, qty) + cellStr("F" + r, eaten) + cellStr("G" + r, off) + '</row>';
+          r++;
+        }
+        (en.items || []).forEach(function (it) { rowOut(en.slot, en.version, it.name, it.qty, it.eaten ? "Yes" : "No", "No"); });
+        (en.extras || []).forEach(function (x) { rowOut(en.slot, "", x.name, x.qty, "Yes", "Yes"); });
+        r++; // blank row between meals
+      });
+      r++; // extra blank row between days
+    });
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>' +
+      '<sheetFormatPr defaultRowHeight="15"/>' +
+      '<cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="2" width="14" customWidth="1"/><col min="3" max="3" width="16" customWidth="1"/><col min="4" max="4" width="22" customWidth="1"/><col min="5" max="5" width="9" customWidth="1"/><col min="6" max="6" width="8" customWidth="1"/><col min="7" max="7" width="9" customWidth="1"/></cols>' +
+      '<sheetData>' + b + '</sheetData></worksheet>';
+  }
+
+  function buildDietBytes() {
+    if (!state.mealHistory.length) return null;
+    return assembleWorkbook([{ title: "Diet", xml: dietSheetXml() }]);
+  }
+
   function downloadBytes(bytes, name) {
     var blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     var url = URL.createObjectURL(blob);
@@ -801,9 +1111,13 @@
     toast("Downloaded a copy of workout-log.xlsx");
   }
 
-  // ---- one persistent file via File System Access API (Chrome/Edge incl. Android) ----
+  // ---- persistent files via File System Access API (Chrome/Edge incl. Android) ----
   var FSA = (typeof window.showSaveFilePicker === "function");
-  var fileHandle = null;
+  var handles = { workout: null, diet: null };
+  var FILEMETA = {
+    workout: { idb: "xlsxHandle", name: "workout-log.xlsx" },
+    diet:    { idb: "dietHandle", name: "diet-log.xlsx" }
+  };
 
   function idbReq(mode, fn) {
     return new Promise(function (res, rej) {
@@ -822,16 +1136,18 @@
   function idbGet(k) { return idbReq("readonly", function (st) { return st.get(k); }); }
   function idbSet(k, v) { return idbReq("readwrite", function (st) { st.put(v, k); return null; }); }
 
-  async function pickFile() {
-    fileHandle = await window.showSaveFilePicker({
-      suggestedName: "workout-log.xlsx",
+  async function pickFile(target) {
+    var meta = FILEMETA[target];
+    var h = await window.showSaveFilePicker({
+      suggestedName: meta.name,
       types: [{ description: "Excel workbook", accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] } }]
     });
-    try { await idbSet("xlsxHandle", fileHandle); } catch (e) {}
-    return fileHandle;
+    handles[target] = h;
+    try { await idbSet(meta.idb, h); } catch (e) {}
+    return h;
   }
-  async function writeToFile(bytes) {
-    var h = fileHandle || (await pickFile());
+  async function writeToFile(target, bytes) {
+    var h = handles[target] || (await pickFile(target));
     if ((await h.queryPermission({ mode: "readwrite" })) !== "granted") {
       if ((await h.requestPermission({ mode: "readwrite" })) !== "granted") throw new Error("permission");
     }
@@ -842,7 +1158,8 @@
   }
 
   if (FSA) {
-    idbGet("xlsxHandle").then(function (h) { if (h) { fileHandle = h; if (view === "home") renderHome(); } }).catch(function () {});
+    idbGet("xlsxHandle").then(function (h) { if (h) { handles.workout = h; render(); } }).catch(function () {});
+    idbGet("dietHandle").then(function (h) { if (h) { handles.diet = h; render(); } }).catch(function () {});
   }
 
   function snapshotDay(day) {
@@ -876,7 +1193,7 @@
     var bytes = buildWorkbookBytes();   // built from history -> no duplicates
     if (FSA) {
       try {
-        var name = await writeToFile(bytes);
+        var name = await writeToFile("workout", bytes);
         toast("Saved " + (day.name || "workout") + " → " + name);
       } catch (e) {
         if (e && e.name === "AbortError") { toast("Pick a file to save into, then tap Save again."); return; }
@@ -889,9 +1206,56 @@
     }
   }
 
-  // Android hardware back button -> go home instead of leaving the app
+  function snapshotMeals() {
+    var out = [];
+    state.meals.slots.forEach(function (slot) {
+      var sel = state.mealDay.sel[slot.id];
+      if (!sel) return;
+      var version = sel.versionId ? getVersion(slot, sel.versionId) : null;
+      var items = [];
+      if (version) {
+        version.items.forEach(function (it) {
+          var ie = sel.items[it.id] || { eaten: true, qty: "" };
+          items.push({ name: (it.name || "").trim() || "(item)", qty: (ie.qty || "").trim(), eaten: !!ie.eaten });
+        });
+      }
+      var extras = (sel.extras || []).filter(function (x) { return (x.name || "").trim(); })
+        .map(function (x) { return { name: x.name.trim(), qty: (x.qty || "").trim() }; });
+      if (!items.length && !extras.length) return;
+      out.push({ slot: slot.name, version: version ? (version.name || "").trim() : "", items: items, extras: extras });
+    });
+    return out;
+  }
+
+  async function saveMealDay() {
+    var entries = snapshotMeals();
+    if (!entries.length) { toast("Pick a meal version or add what you ate first."); return; }
+    var date = state.mealDay.date || todayISO();
+    state.mealHistory = state.mealHistory.filter(function (m) { return m.date !== date; });
+    state.mealHistory.push({ id: uid(), date: date, entries: entries });
+    save();
+
+    var bytes = buildDietBytes();
+    if (FSA) {
+      try {
+        var name = await writeToFile("diet", bytes);
+        toast("Saved today’s meals → " + name);
+      } catch (e) {
+        if (e && e.name === "AbortError") { toast("Pick a file to save into, then tap Save again."); return; }
+        downloadBytes(bytes, "diet-log.xlsx");
+        toast("Saved today’s meals (downloaded)");
+      }
+    } else {
+      downloadBytes(bytes, "diet-log.xlsx");
+      toast("Saved (downloaded — this browser can’t update a file in place)");
+    }
+  }
+
+  // Android hardware back button -> step back one level instead of leaving the app
   window.addEventListener("popstate", function () {
-    if (view === "day") { view = "home"; render(); history.pushState(null, ""); }
+    if (section === "meal" && mealView === "plan") { mealView = "log"; render(); }
+    else if (section === "workout" && view === "day") { view = "home"; render(); }
+    history.pushState(null, "");
   });
   history.pushState(null, "");
 
