@@ -1316,8 +1316,13 @@
 
   render();
 
-  // ---------- register service worker (enables offline + install) ----------
+  // ---------- register service worker (offline + install); auto-refresh on update ----------
   if ("serviceWorker" in navigator) {
+    var firstControl = !navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      if (firstControl) { firstControl = false; return; } // skip the very first install
+      window.location.reload();
+    });
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("sw.js").catch(function () {});
     });
