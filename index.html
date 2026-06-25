@@ -1243,9 +1243,18 @@
     // replace any earlier save of THIS workout on THIS day, so re-saving just updates it
     state.history = state.history.filter(function (s) { return !(s.date === date && s.dayId === day.id); });
     state.history.push({ id: uid(), date: date, dayId: day.id, dayName: day.name, exercises: exs });
-    save();
 
-    var bytes = buildWorkbookBytes();   // built from history -> no duplicates
+    // erase entered numbers so the workout is a clean template next time (exercises + set rows stay)
+    day.exercises.forEach(function (ex) {
+      ex.sets.forEach(function (s) {
+        s.reps = ""; s.weight = "";
+        (s.drops || []).forEach(function (d) { d.reps = ""; d.weight = ""; });
+      });
+    });
+    save();
+    if (section === "workout" && view === "day" && activeDayId === day.id) renderDay(day);
+
+    var bytes = buildWorkbookBytes();   // built from the history snapshot -> still has the numbers
     if (FSA) {
       try {
         var name = await writeToFile("workout", bytes);
