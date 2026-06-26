@@ -378,6 +378,8 @@
     color: var(--accent); font-size: 12px; font-weight: 700;
     cursor: pointer; padding: 2px;
   }
+  .logbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -4px 2px 16px; }
+  .logbar-file { color: var(--muted); font-size: 12px; }
 
   /* ===================== bottom nav ===================== */
   .bottomnav {
@@ -579,7 +581,6 @@
     var html = '<div class="appbar">' +
       '<h1 class="title grow">Workouts</h1>' +
       unitToggleHTML() +
-      '<button class="pill-btn ghost" data-action="export" title="Export to Excel">Export</button>' +
       '</div>';
 
     if (!state.days.length) {
@@ -596,13 +597,7 @@
     var saved = state.history.length;
     html += '<div class="home-sub">Tap a workout to open it.' +
       (saved ? ' · ' + saved + (saved === 1 ? ' session saved' : ' sessions saved') : '') + '</div>';
-    if (FSA) {
-      html += handles.workout
-        ? '<div class="file-row"><span>Saving to <b>' + esc(handles.workout.name) + '</b></span><button class="link-btn" data-action="relink">change file</button></div>'
-        : '<div class="file-row"><span>Your first Save will ask where to keep your Excel file.</span><button class="link-btn" data-action="relink">choose now</button></div>';
-    } else {
-      html += '<div class="file-row"><span>This browser saves by downloading a copy each time.</span></div>';
-    }
+    html += '<div class="logbar"><button class="pill-btn" data-action="openLog" data-target="workout">Workout log</button>' + fileInfoHTML("workout") + '</div>';
     var PALETTE = ["#4f8cff", "#34d399", "#f59e0b", "#a78bfa", "#f472b6", "#22d3ee"];
     var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7v10M3.5 9.5v5M17.5 7v10M20.5 9.5v5M6.5 12h11"/></svg>';
     var CHEV = '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
@@ -731,11 +726,7 @@
     state.meals.slots.forEach(function (s) { dayTotal += versionKcal(displayVersion(s)); });
     html += '<div class="home-sub">' + esc(prettyDate(state.mealDay.date)) +
       (dayTotal ? ' · ' + dayTotal.toLocaleString() + ' kcal' : '') + '</div>';
-    if (FSA) {
-      html += handles.diet
-        ? '<div class="file-row"><span>Saving to <b>' + esc(handles.diet.name) + '</b></span><button class="link-btn" data-action="relinkDiet">change file</button></div>'
-        : '<div class="file-row"><span>Your first meal Save will ask where to keep diet-log.xlsx.</span><button class="link-btn" data-action="relinkDiet">choose now</button></div>';
-    }
+    html += '<div class="logbar"><button class="pill-btn" data-action="openLog" data-target="diet">Meal log</button>' + fileInfoHTML("diet") + '</div>';
     var PAL = ["#34d399", "#f59e0b", "#4f8cff", "#f472b6", "#a78bfa", "#22d3ee"];
     var FORK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v4a2 2 0 0 0 4 0V3M7 7v14M16 3v18M16 3c-1.7.4-2.7 2.2-2.7 4.6 0 1.6 1.1 2.6 2.7 2.6"/></svg>';
     var CHEV = '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
@@ -894,7 +885,8 @@
     }
     else if (a === "save")   { saveSession(getDay(btn.dataset.day) || day); }
     else if (a === "export") { exportDownload(); }
-    else if (a === "relink") { pickFile("workout").then(function () { render(); toast("Saving to " + handles.workout.name); }).catch(function () {}); }
+    else if (a === "openLog") { openLog(btn.dataset.target); }
+    else if (a === "relink") { var tg = btn.dataset.target || "workout"; pickFile(tg).then(function () { render(); toast("Saving to " + handles[tg].name); }).catch(function () {}); }
 
     // ----- meal actions -----
     else if (a === "gotoPlan") { mealView = "plan"; history.pushState(null, ""); render(); }
@@ -1011,36 +1003,50 @@
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
     '<numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy\\-mm\\-dd"/></numFmts>' +
     '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
-    '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+    '<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFFFC7CE"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFBDD7EE"/></patternFill></fill></fills>' +
     '<borders count="1"><border/></borders>' +
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-    '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' +
+    '<cellXfs count="7">' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+    '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+    '<xf numFmtId="164" fontId="0" fillId="2" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1"/>' +
+    '<xf numFmtId="164" fontId="0" fillId="3" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1"/>' +
+    '<xf numFmtId="0" fontId="0" fillId="2" borderId="0" xfId="0" applyFill="1"/>' +
+    '<xf numFmtId="0" fontId="0" fillId="3" borderId="0" xfId="0" applyFill="1"/>' +
+    '</cellXfs>' +
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
 
-  // one worksheet for one exercise: Date | Set | Reps | Weight, a blank row between days
-  function sheetXml(sessions) {
+  // one worksheet per workout: Date | Exercise | Set | Reps | Weight, blank row between days
+  function workoutSheetXml(sessions) {
     var b = '<row r="1">' +
       '<c r="A1" s="1" t="inlineStr"><is><t>Date</t></is></c>' +
-      '<c r="B1" s="1" t="inlineStr"><is><t>Set</t></is></c>' +
-      '<c r="C1" s="1" t="inlineStr"><is><t>Reps</t></is></c>' +
-      '<c r="D1" s="1" t="inlineStr"><is><t>Weight</t></is></c></row>';
+      '<c r="B1" s="1" t="inlineStr"><is><t>Exercise</t></is></c>' +
+      '<c r="C1" s="1" t="inlineStr"><is><t>Set</t></is></c>' +
+      '<c r="D1" s="1" t="inlineStr"><is><t>Reps</t></is></c>' +
+      '<c r="E1" s="1" t="inlineStr"><is><t>Weight</t></is></c></row>';
     var r = 2;
-    sessions.forEach(function (day) {
-      var serial = dateSerial(day.date);
-      day.rows.forEach(function (row) {
-        var c = '<row r="' + r + '"><c r="A' + r + '" s="2"><v>' + serial + '</v></c>';
-        c += '<c r="B' + r + '"><v>' + row.set + '</v></c>';
-        c += (row.reps == null ? '' : '<c r="C' + r + '"><v>' + row.reps + '</v></c>');
-        c += (row.weight == null ? '' : '<c r="D' + r + '"><v>' + row.weight + '</v></c>');
-        b += c + '</row>'; r++;
+    sessions.forEach(function (sess) {
+      var serial = dateSerial(sess.date);
+      sess.exercises.forEach(function (ex) {
+        ex.rows.forEach(function (row) {
+          var c = '<row r="' + r + '"><c r="A' + r + '" s="2"><v>' + serial + '</v></c>';
+          c += '<c r="B' + r + '" t="inlineStr"><is><t>' + xe(ex.name) + '</t></is></c>';
+          c += '<c r="C' + r + '"><v>' + row.set + '</v></c>';
+          c += (row.reps == null ? '' : '<c r="D' + r + '"><v>' + row.reps + '</v></c>');
+          c += (row.weight == null ? '' : '<c r="E' + r + '"><v>' + row.weight + '</v></c>');
+          b += c + '</row>'; r++;
+        });
       });
-      r++; // leave one blank row between days
+      r++; // blank row between days
     });
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
       '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>' +
       '<sheetFormatPr defaultRowHeight="15"/>' +
-      '<cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="2" width="7" customWidth="1"/><col min="3" max="3" width="7" customWidth="1"/><col min="4" max="4" width="9" customWidth="1"/></cols>' +
+      '<cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="2" width="22" customWidth="1"/><col min="3" max="3" width="6" customWidth="1"/><col min="4" max="4" width="7" customWidth="1"/><col min="5" max="5" width="9" customWidth="1"/></cols>' +
       '<sheetData>' + b + '</sheetData></worksheet>';
   }
 
@@ -1052,11 +1058,15 @@
     return n;
   }
 
-  // group every saved session's data by exercise name, ordered by date
-  function buildExerciseMap() {
+  // group every saved session by WORKOUT (one sheet per workout), ordered by date
+  function buildWorkoutMap() {
     var map = {}, order = [];
     var sorted = state.history.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
     sorted.forEach(function (sess) {
+      var key = sess.dayId || sess.dayName || "Workout";
+      if (!map[key]) { map[key] = { name: sess.dayName || "Workout", sessions: [] }; order.push(key); }
+      map[key].name = sess.dayName || map[key].name;
+      var exs = [];
       sess.exercises.forEach(function (ex) {
         var name = (ex.name || "").trim();
         if (!name) return;
@@ -1068,10 +1078,9 @@
           if (!(rp == null && wt == null)) { setNo++; rows.push({ set: String(setNo), reps: rp, weight: wt }); }
           drops.forEach(function (d, di) { rows.push({ set: setNo + "." + (di + 1), reps: numOrNull(d.reps), weight: numOrNull(d.weight) }); });
         });
-        if (!rows.length) return;
-        if (!map[name]) { map[name] = []; order.push(name); }
-        map[name].push({ date: sess.date, rows: rows });
+        if (rows.length) exs.push({ name: name, rows: rows });
       });
+      if (exs.length) map[key].sessions.push({ date: sess.date, exercises: exs });
     });
     return { order: order, map: map };
   }
@@ -1106,29 +1115,40 @@
   }
 
   function buildWorkbookBytes() {
-    var agg = buildExerciseMap();
+    var agg = buildWorkoutMap();
     if (!agg.order.length) return null;
-    return assembleWorkbook(agg.order.map(function (name) { return { title: name, xml: sheetXml(agg.map[name]) }; }));
+    return assembleWorkbook(agg.order.map(function (key) {
+      var live = getDay(key);
+      var title = (live && live.name) || agg.map[key].name || "Workout";
+      return { title: title, xml: workoutSheetXml(agg.map[key].sessions) };
+    }));
   }
 
   // ----- diet workbook: one "Diet" sheet, blank row between meals, two between days -----
-  function cellStr(ref, val) { return (val === "" || val == null) ? "" : '<c r="' + ref + '" t="inlineStr"><is><t>' + xe(val) + '</t></is></c>'; }
+  function cellStr(ref, val, s) {
+    if (val === "" || val == null) return s ? '<c r="' + ref + '" s="' + s + '"/>' : "";
+    return '<c r="' + ref + '"' + (s ? ' s="' + s + '"' : '') + ' t="inlineStr"><is><t>' + xe(val) + '</t></is></c>';
+  }
 
   function dietSheetXml() {
     var head = ["Date", "Meal", "Version", "Item", "Qty", "Kcal", "Eaten", "Off-plan"], cols = ["A", "B", "C", "D", "E", "F", "G", "H"];
     var b = '<row r="1">';
     head.forEach(function (h, i) { b += '<c r="' + cols[i] + '1" s="1" t="inlineStr"><is><t>' + h + '</t></is></c>'; });
     b += '</row>';
-    var r = 2;
+    var r = 2, di = 0;
     var sorted = state.mealHistory.slice().sort(function (a, b2) { return a.date < b2.date ? -1 : a.date > b2.date ? 1 : 0; });
     sorted.forEach(function (day) {
       var serial = dateSerial(day.date);
+      var even = (di % 2 === 0);
+      var ds = even ? 3 : 4;   // Date cell fill: red / blue, alternating per day
+      var gs = even ? 5 : 6;   // other cells fill: red / blue
+      di++;
       (day.entries || []).forEach(function (en) {
         function rowOut(meal, version, item, qty, kcal, eaten, off) {
-          b += '<row r="' + r + '"><c r="A' + r + '" s="2"><v>' + serial + '</v></c>' +
-            cellStr("B" + r, meal) + cellStr("C" + r, version) + cellStr("D" + r, item) + cellStr("E" + r, qty) +
-            ((kcal == null || kcal === "") ? "" : '<c r="F' + r + '"><v>' + kcal + '</v></c>') +
-            cellStr("G" + r, eaten) + cellStr("H" + r, off) + '</row>';
+          b += '<row r="' + r + '"><c r="A' + r + '" s="' + ds + '"><v>' + serial + '</v></c>' +
+            cellStr("B" + r, meal, gs) + cellStr("C" + r, version, gs) + cellStr("D" + r, item, gs) + cellStr("E" + r, qty, gs) +
+            ((kcal == null || kcal === "") ? '<c r="F' + r + '" s="' + gs + '"/>' : '<c r="F' + r + '" s="' + gs + '"><v>' + kcal + '</v></c>') +
+            cellStr("G" + r, eaten, gs) + cellStr("H" + r, off, gs) + '</row>';
           r++;
         }
         (en.items || []).forEach(function (it) { rowOut(en.slot, en.version, it.name, it.qty, it.kcal, it.eaten ? "Yes" : "No", "No"); });
@@ -1164,6 +1184,24 @@
     if (!bytes) { toast("Nothing saved yet — log a session and tap Save."); return; }
     downloadBytes(bytes, "workout-log.xlsx");
     toast("Downloaded a copy of workout-log.xlsx");
+  }
+
+  // open the latest log in the device's spreadsheet app
+  function openLog(target) {
+    var bytes = target === "diet" ? buildDietBytes() : buildWorkbookBytes();
+    if (!bytes) { toast(target === "diet" ? "No meals saved yet — tap Save first." : "No workouts saved yet — tap Save first."); return; }
+    var blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    var url = URL.createObjectURL(blob);
+    var win = window.open(url, "_blank");
+    if (!win) downloadBytes(bytes, target === "diet" ? "diet-log.xlsx" : "workout-log.xlsx");
+    setTimeout(function () { URL.revokeObjectURL(url); }, 8000);
+  }
+
+  function fileInfoHTML(target) {
+    if (!FSA) return '<span class="logbar-file">downloads ' + FILEMETA[target].name + '</span>';
+    return handles[target]
+      ? '<span class="logbar-file">' + esc(handles[target].name) + ' · <button class="link-btn" data-action="relink" data-target="' + target + '">change</button></span>'
+      : '<span class="logbar-file">no file yet · <button class="link-btn" data-action="relink" data-target="' + target + '">choose file</button></span>';
   }
 
   // ---- persistent files via File System Access API (Chrome/Edge incl. Android) ----

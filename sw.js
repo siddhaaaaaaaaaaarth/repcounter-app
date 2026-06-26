@@ -1,7 +1,7 @@
 /* Service worker: app shell for offline + install.
    HTML is network-first (always latest when online, cache fallback offline);
    static assets are cache-first. */
-const CACHE = "workout-tracker-v7";
+const CACHE = "workout-tracker-v8";
 const ASSETS = [
   "./",
   "./index.html",
