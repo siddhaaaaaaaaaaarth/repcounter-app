@@ -1,7 +1,7 @@
 {
-  "name": "Workout Tracker",
-  "short_name": "Workouts",
-  "description": "Track gym workouts: weight, reps, exercises, routines and drop sets.",
+  "name": "Repit",
+  "short_name": "Repit",
+  "description": "Repit — track gym workouts and meals by date, exported to Excel.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
