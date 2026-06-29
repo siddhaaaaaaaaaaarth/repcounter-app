@@ -506,6 +506,9 @@
   .feel-row .dot { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--lc); }
   .feel-row.on { background: var(--lc); color: var(--tc); border-color: var(--lc); }
   .feel-row.on .dot { background: #fff; border-color: #fff; }
+  .feel-list.sm { gap: 6px; margin-top: 8px; }
+  .feel-list.sm .feel-row { padding: 8px 12px; font-size: 14px; }
+  .feel-list.sm .feel-row .dot { width: 15px; height: 15px; }
 
   .seg-head { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 800; margin: 18px 2px 8px; }
   .set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; margin-bottom: 10px; }
@@ -588,18 +591,18 @@
 
   // ---- optional per-exercise data + feel scales ----
   var SET_FEELS = [
-    { k: "puke",  label: "Puke",       chip: "🤮", color: "#6b7a2e", light: false },
-    { k: "butt",  label: "Buttcheeks", chip: "🍑", color: "#ec7fb0", light: true  },
-    { k: "meh",   label: "Meh",        chip: "😐", color: "#8b909a", light: true  },
+    { k: "super", label: "Superman",   chip: "🦸", color: "#ffc62e", light: true  },
     { k: "good",  label: "Good",       chip: "🙂", color: "#cdbb94", light: true  },
-    { k: "super", label: "Superman",   chip: "🦸", color: "#ffc62e", light: true  }
+    { k: "meh",   label: "Meh",        chip: "😐", color: "#8b909a", light: true  },
+    { k: "butt",  label: "Buttcheeks", chip: "🍑", color: "#ec7fb0", light: true  },
+    { k: "puke",  label: "Puke",       chip: "🤮", color: "#6b7a2e", light: false }
   ];
   var WO_FEELS = [
-    { k: "poop",  label: "Poop",      emoji: "💩 ", color: "#8a5a2c", light: false },
-    { k: "wgood", label: "Good",      emoji: "",    color: "#8b909a", light: true  },
-    { k: "vgood", label: "Very good", emoji: "",    color: "#3cba54", light: true  },
+    { k: "woman", label: "👱‍♀️👱‍♀️👱‍♀️", emoji: "", color: "#ffc62e", light: true  },
     { k: "elite", label: "Elite",     emoji: "",    color: "#8b5cf6", light: false },
-    { k: "woman", label: "👩👩👩",     emoji: "",    color: "#ffc62e", light: true  }
+    { k: "vgood", label: "Very good", emoji: "",    color: "#3cba54", light: true  },
+    { k: "wgood", label: "Good",      emoji: "",    color: "#8b909a", light: true  },
+    { k: "poop",  label: "Poop",      emoji: "💩 ", color: "#8a5a2c", light: false }
   ];
   function feelLabel(arr, key) { for (var i = 0; i < arr.length; i++) if (arr[i].k === key) return arr[i].label; return ""; }
   function exSettings(ex) { if (!ex.settings) ex.settings = { arms: false, rir: false, partials: false, feel: false, remarks: false }; return ex.settings; }
@@ -741,17 +744,21 @@
           '</td></tr>';
 
         if (st.rir || st.partials || st.feel) {
-          var ev = '<tr class="setextra"><td colspan="4"><div class="setextra-in">';
-          if (st.rir) ev += '<label>RIR <input class="mini" type="number" inputmode="numeric" min="0" data-kind="rir" data-ex="' + ex.id + '" data-set="' + s.id + '" value="' + esc(s.rir) + '" /></label>';
-          if (st.partials) ev += '<label>Partials <input class="mini" type="number" inputmode="numeric" min="0" data-kind="partials" data-ex="' + ex.id + '" data-set="' + s.id + '" value="' + esc(s.partials) + '" /></label>';
+          var ev = '<tr class="setextra"><td colspan="4">';
+          if (st.rir || st.partials) {
+            ev += '<div class="setextra-in">';
+            if (st.rir) ev += '<label>RIR <input class="mini" type="number" inputmode="numeric" min="0" data-kind="rir" data-ex="' + ex.id + '" data-set="' + s.id + '" value="' + esc(s.rir) + '" /></label>';
+            if (st.partials) ev += '<label>Partials <input class="mini" type="number" inputmode="numeric" min="0" data-kind="partials" data-ex="' + ex.id + '" data-set="' + s.id + '" value="' + esc(s.partials) + '" /></label>';
+            ev += '</div>';
+          }
           if (st.feel) {
-            ev += '<div class="feel-chips">';
+            ev += '<div class="feel-list sm">';
             SET_FEELS.forEach(function (fl) {
-              ev += '<button class="feel-chip' + (s.feel === fl.k ? " on" : "") + '" data-action="setFeel" data-ex="' + ex.id + '" data-set="' + s.id + '" data-feel="' + fl.k + '" style="--lc:' + fl.color + '" title="' + fl.label + '">' + fl.chip + '</button>';
+              ev += '<div class="feel-row' + (s.feel === fl.k ? " on" : "") + '" data-action="setFeel" data-ex="' + ex.id + '" data-set="' + s.id + '" data-feel="' + fl.k + '" style="--lc:' + fl.color + ';--tc:' + (fl.light ? "#15171c" : "#ffffff") + '"><span>' + fl.chip + ' ' + esc(fl.label) + '</span><span class="dot"></span></div>';
             });
             ev += '</div>';
           }
-          ev += '</div></td></tr>';
+          ev += '</td></tr>';
           html += ev;
         }
 
