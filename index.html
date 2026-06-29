@@ -467,6 +467,54 @@
 
   .meal-title { font-size: 27px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .meal-title .meal-kcal { font-size: 14px; font-weight: 700; color: var(--accent); }
+
+  /* ===================== exercise settings + optional data ===================== */
+  .ex-extra { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 2px 10px; }
+  .ex-extra label, .setextra-in label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 700; }
+  input.mini {
+    width: 60px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 16px; padding: 8px 6px; text-align: center; font-variant-numeric: tabular-nums;
+  }
+  input.mini:focus { outline: none; border-color: var(--accent); }
+  input.mini::-webkit-outer-spin-button, input.mini::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input.mini { -moz-appearance: textfield; }
+  .remarks-in {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px;
+    color: var(--text); font-size: 15px; padding: 10px 12px; margin-top: 8px;
+  }
+  .remarks-in:focus { outline: none; border-color: var(--accent); }
+
+  tr.setextra td { padding: 0 5px 9px 5px; }
+  .setextra-in { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .setextra-in input.mini { width: 54px; padding: 6px 4px; }
+  .feel-chips { display: flex; gap: 6px; }
+  .feel-chip {
+    width: 36px; height: 32px; border-radius: 9px; border: 1.5px solid var(--border);
+    background: var(--panel-2); font-size: 17px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .feel-chip.on { border-width: 2px; border-color: var(--lc); background: color-mix(in srgb, var(--lc) 30%, transparent); }
+
+  .wfeel-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 12px; margin: 16px 0 4px; }
+  .wfeel-head { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+  .feel-list { display: flex; flex-direction: column; gap: 8px; }
+  .feel-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--panel-2); cursor: pointer; font-weight: 700; font-size: 15px; color: var(--text);
+  }
+  .feel-row .dot { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--lc); }
+  .feel-row.on { background: var(--lc); color: var(--tc); border-color: var(--lc); }
+  .feel-row.on .dot { background: #fff; border-color: #fff; }
+
+  .seg-head { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 800; margin: 18px 2px 8px; }
+  .set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; margin-bottom: 10px; }
+  .set-row .sr-label { font-size: 15px; font-weight: 600; }
+  .set-row .sr-sub { font-size: 12px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+  .switch { width: 46px; height: 28px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); position: relative; cursor: pointer; flex-shrink: 0; transition: background .15s; }
+  .switch.on { background: var(--accent); border-color: var(--accent); }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .15s; }
+  .switch.on::after { transform: translateX(18px); }
 </style>
 </head>
 <body>
@@ -490,6 +538,7 @@
   var mealView = "home";    // meal: "home" | "detail" | "plan"
   var activeSlotId = null;
   var activeDayId = null;
+  var activeExId = null;
 
   function load() {
     try {
@@ -537,6 +586,25 @@
   function getDrop(set, id) { return set.drops.find(function (dr) { return dr.id === id; }); }
   function esc(v)          { return (v == null ? "" : String(v)).replace(/"/g, "&quot;"); }
 
+  // ---- optional per-exercise data + feel scales ----
+  var SET_FEELS = [
+    { k: "puke",  label: "Puke",       chip: "🤮", color: "#6b7a2e", light: false },
+    { k: "butt",  label: "Buttcheeks", chip: "🍑", color: "#ec7fb0", light: true  },
+    { k: "meh",   label: "Meh",        chip: "😐", color: "#8b909a", light: true  },
+    { k: "good",  label: "Good",       chip: "🙂", color: "#cdbb94", light: true  },
+    { k: "super", label: "Superman",   chip: "🦸", color: "#ffc62e", light: true  }
+  ];
+  var WO_FEELS = [
+    { k: "poop",  label: "Poop",      emoji: "💩 ", color: "#8a5a2c", light: false },
+    { k: "wgood", label: "Good",      emoji: "",    color: "#8b909a", light: true  },
+    { k: "vgood", label: "Very good", emoji: "",    color: "#3cba54", light: true  },
+    { k: "elite", label: "Elite",     emoji: "",    color: "#8b5cf6", light: false },
+    { k: "woman", label: "👩👩👩",     emoji: "",    color: "#ffc62e", light: true  }
+  ];
+  function feelLabel(arr, key) { for (var i = 0; i < arr.length; i++) if (arr[i].k === key) return arr[i].label; return ""; }
+  function exSettings(ex) { if (!ex.settings) ex.settings = { arms: false, rir: false, partials: false, feel: false, remarks: false }; return ex.settings; }
+  function colL(n) { var s = ""; while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
+
   // every exercise name used anywhere -> autocomplete suggestions
   function allExerciseNames() {
     var seen = {};
@@ -556,7 +624,9 @@
       else if (mealView === "detail" && getSlot(activeSlotId)) renderMealDetail(getSlot(activeSlotId));
       else { mealView = "home"; renderMealHome(); }
     } else {
-      if (view === "day" && getDay(activeDayId)) renderDay(getDay(activeDayId));
+      var ad = getDay(activeDayId);
+      if (view === "exset" && ad && getEx(ad, activeExId)) renderExSettings(ad, getEx(ad, activeExId));
+      else if (view === "day" && ad) renderDay(ad);
       else { view = "home"; renderHome(); }
     }
     renderNav();
@@ -640,11 +710,20 @@
       '</datalist>';
 
     day.exercises.forEach(function (ex) {
+      var st = exSettings(ex);
       html += '<div class="exercise">';
       html += '<div class="ex-head">' +
         '<input class="ex-name" list="exNames" data-kind="exname" data-ex="' + ex.id + '" value="' + esc(ex.name) + '" placeholder="Exercise name" />' +
+        '<button class="icon-btn" data-action="exSettings" data-ex="' + ex.id + '" title="Exercise settings">⚙</button>' +
         '<button class="icon-btn danger" data-action="delEx" data-ex="' + ex.id + '" title="Delete exercise">🗑</button>' +
         '</div>';
+
+      if (st.arms) {
+        html += '<div class="ex-extra">' +
+          '<label>L arm <input class="mini" type="number" inputmode="numeric" min="0" data-kind="leftReps" data-ex="' + ex.id + '" value="' + esc(ex.leftReps) + '" /></label>' +
+          '<label>R arm <input class="mini" type="number" inputmode="numeric" min="0" data-kind="rightReps" data-ex="' + ex.id + '" value="' + esc(ex.rightReps) + '" /></label>' +
+          '</div>';
+      }
 
       html += '<table class="sets"><thead><tr>' +
         '<th class="col-label">Set</th><th class="col-num">Reps</th>' +
@@ -661,6 +740,21 @@
             '<button class="icon-btn danger" data-action="delSet" data-ex="' + ex.id + '" data-set="' + s.id + '" title="Delete set">✕</button>' +
           '</td></tr>';
 
+        if (st.rir || st.partials || st.feel) {
+          var ev = '<tr class="setextra"><td colspan="4"><div class="setextra-in">';
+          if (st.rir) ev += '<label>RIR <input class="mini" type="number" inputmode="numeric" min="0" data-kind="rir" data-ex="' + ex.id + '" data-set="' + s.id + '" value="' + esc(s.rir) + '" /></label>';
+          if (st.partials) ev += '<label>Partials <input class="mini" type="number" inputmode="numeric" min="0" data-kind="partials" data-ex="' + ex.id + '" data-set="' + s.id + '" value="' + esc(s.partials) + '" /></label>';
+          if (st.feel) {
+            ev += '<div class="feel-chips">';
+            SET_FEELS.forEach(function (fl) {
+              ev += '<button class="feel-chip' + (s.feel === fl.k ? " on" : "") + '" data-action="setFeel" data-ex="' + ex.id + '" data-set="' + s.id + '" data-feel="' + fl.k + '" style="--lc:' + fl.color + '" title="' + fl.label + '">' + fl.chip + '</button>';
+            });
+            ev += '</div>';
+          }
+          ev += '</div></td></tr>';
+          html += ev;
+        }
+
         s.drops.forEach(function (dr, di) {
           html += '<tr class="drop">' +
             '<td class="drop-label">↳ drop ' + (di + 1) + '</td>' +
@@ -673,10 +767,41 @@
 
       html += '</tbody></table>';
       html += '<button class="text-btn" data-action="addSet" data-ex="' + ex.id + '">+ Add set</button>';
+      if (st.remarks) html += '<input class="remarks-in" data-kind="remarks" data-ex="' + ex.id + '" value="' + esc(ex.remarks) + '" placeholder="Remarks for this exercise" />';
       html += '</div>';
     });
 
     html += '<button class="add-exercise" data-action="addEx">+ Add exercise</button>';
+
+    html += '<div class="wfeel-card"><div class="wfeel-head">How did the whole workout feel?</div><div class="feel-list">';
+    WO_FEELS.forEach(function (fl) {
+      html += '<div class="feel-row' + (day.feel === fl.k ? " on" : "") + '" data-action="setWFeel" data-feel="' + fl.k + '" style="--lc:' + fl.color + ';--tc:' + (fl.light ? "#15171c" : "#ffffff") + '">' +
+        '<span>' + esc(fl.emoji) + esc(fl.label) + '</span><span class="dot"></span></div>';
+    });
+    html += '</div></div>';
+
+    app.innerHTML = html;
+  }
+
+  function renderExSettings(day, ex) {
+    var st = exSettings(ex);
+    var html = '<div class="appbar">' +
+      '<button class="back-btn" data-action="exsetBack">‹ Back</button>' +
+      '<span class="grow"></span>' +
+      '</div>';
+    html += '<div class="day-name" style="font-size:22px">' + esc(ex.name || "Exercise") + ' · settings</div>';
+    html += '<div class="home-sub" style="margin-top:-8px">Turn on the data you want to log &amp; export for this exercise.</div>';
+    function row(feat, label, sub) {
+      return '<div class="set-row"><div><div class="sr-label">' + label + '</div><div class="sr-sub">' + sub + '</div></div>' +
+        '<div class="switch' + (st[feat] ? " on" : "") + '" data-action="toggleSetting" data-ex="' + ex.id + '" data-feat="' + feat + '"></div></div>';
+    }
+    html += '<div class="seg-head">Exercise data</div>';
+    html += row("arms", "Left &amp; right arm reps", "One value each, for the whole exercise");
+    html += row("remarks", "Remarks", "A note about the exercise");
+    html += '<div class="seg-head">Set data</div>';
+    html += row("rir", "Reps in reserve (RIR)", "Entered on every set");
+    html += row("partials", "Partial reps", "Entered on every set");
+    html += row("feel", "How the movement felt", "5 levels, on every set");
     app.innerHTML = html;
   }
 
@@ -883,6 +1008,18 @@
       set.drops = set.drops.filter(function (dr) { return dr.id !== btn.dataset.drop; });
       render();
     }
+    else if (a === "exSettings") { activeExId = btn.dataset.ex; view = "exset"; history.pushState(null, ""); render(); }
+    else if (a === "exsetBack")  { view = "day"; render(); }
+    else if (a === "toggleSetting") {
+      var tex = getEx(day, btn.dataset.ex); if (tex) { var ts = exSettings(tex); ts[btn.dataset.feat] = !ts[btn.dataset.feat]; }
+      render();
+    }
+    else if (a === "setFeel") {
+      var fs = getSet(getEx(day, btn.dataset.ex), btn.dataset.set);
+      if (fs) fs.feel = (fs.feel === btn.dataset.feel) ? "" : btn.dataset.feel;
+      render();
+    }
+    else if (a === "setWFeel") { day.feel = (day.feel === btn.dataset.feel) ? "" : btn.dataset.feel; render(); }
     else if (a === "save")   { saveSession(getDay(btn.dataset.day) || day); }
     else if (a === "export") { exportDownload(); }
     else if (a === "openLog") { openLog(btn.dataset.target); }
@@ -939,6 +1076,11 @@
       var set = getSet(getEx(day, t.dataset.ex), t.dataset.set);
       var dr = getDrop(set, t.dataset.drop); if (dr) dr[t.dataset.field] = t.value;
     }
+    else if (kind === "leftReps")  { var lex = getEx(day, t.dataset.ex); if (lex) lex.leftReps = t.value; }
+    else if (kind === "rightReps") { var rex = getEx(day, t.dataset.ex); if (rex) rex.rightReps = t.value; }
+    else if (kind === "remarks")   { var mex = getEx(day, t.dataset.ex); if (mex) mex.remarks = t.value; }
+    else if (kind === "rir")       { var rs = getSet(getEx(day, t.dataset.ex), t.dataset.set); if (rs) rs.rir = t.value; }
+    else if (kind === "partials")  { var ps = getSet(getEx(day, t.dataset.ex), t.dataset.set); if (ps) ps.partials = t.value; }
     else if (kind === "itemqty") {
       var se = ensureSel(t.dataset.slot);
       se.items[t.dataset.item] = se.items[t.dataset.item] || { eaten: true, qty: "" };
@@ -1019,34 +1161,69 @@
     '</cellXfs>' +
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
 
-  // one worksheet per workout: Date | Exercise | Set | Reps | Weight, blank row between days
-  function workoutSheetXml(sessions) {
-    var b = '<row r="1">' +
-      '<c r="A1" s="1" t="inlineStr"><is><t>Date</t></is></c>' +
-      '<c r="B1" s="1" t="inlineStr"><is><t>Exercise</t></is></c>' +
-      '<c r="C1" s="1" t="inlineStr"><is><t>Set</t></is></c>' +
-      '<c r="D1" s="1" t="inlineStr"><is><t>Reps</t></is></c>' +
-      '<c r="E1" s="1" t="inlineStr"><is><t>Weight</t></is></c></row>';
+  function woColWidth(h) {
+    return h === "Date" ? 12 : h === "Exercise" ? 22 : h === "Remarks" ? 28 : h === "Workout feel" ? 13 :
+      h === "Feel" ? 12 : (h === "Left arm" || h === "Right arm" || h === "Partials") ? 9 : 7;
+  }
+  function woCell(ref, header, d) {
+    switch (header) {
+      case "Date": return '<c r="' + ref + '" s="2"><v>' + d.serial + '</v></c>';
+      case "Exercise": return '<c r="' + ref + '" t="inlineStr"><is><t>' + xe(d.exName) + '</t></is></c>';
+      case "Set": return '<c r="' + ref + '"><v>' + d.set + '</v></c>';
+      case "Reps": return d.reps == null ? '' : '<c r="' + ref + '"><v>' + d.reps + '</v></c>';
+      case "Weight": return d.weight == null ? '' : '<c r="' + ref + '"><v>' + d.weight + '</v></c>';
+      case "Left arm": return (d.exFirst && d.leftReps != null) ? '<c r="' + ref + '"><v>' + d.leftReps + '</v></c>' : '';
+      case "Right arm": return (d.exFirst && d.rightReps != null) ? '<c r="' + ref + '"><v>' + d.rightReps + '</v></c>' : '';
+      case "RIR": return d.rir == null ? '' : '<c r="' + ref + '"><v>' + d.rir + '</v></c>';
+      case "Partials": return d.partials == null ? '' : '<c r="' + ref + '"><v>' + d.partials + '</v></c>';
+      case "Feel": return d.feel ? '<c r="' + ref + '" t="inlineStr"><is><t>' + xe(d.feel) + '</t></is></c>' : '';
+      case "Remarks": return (d.exFirst && d.remarks) ? '<c r="' + ref + '" t="inlineStr"><is><t>' + xe(d.remarks) + '</t></is></c>' : '';
+      case "Workout feel": return (d.sessFirst && d.wfeel) ? '<c r="' + ref + '" t="inlineStr"><is><t>' + xe(d.wfeel) + '</t></is></c>' : '';
+    }
+    return '';
+  }
+  // one worksheet per workout, dynamic columns based on enabled features; blank row between days
+  function workoutSheetXml(wo) {
+    var f = wo.flags;
+    var cols = ["Date", "Exercise", "Set", "Reps", "Weight"];
+    if (f.arms) { cols.push("Left arm", "Right arm"); }
+    if (f.rir) cols.push("RIR");
+    if (f.partials) cols.push("Partials");
+    if (f.feel) cols.push("Feel");
+    if (f.remarks) cols.push("Remarks");
+    if (f.wfeel) cols.push("Workout feel");
+
+    var b = '<row r="1">';
+    cols.forEach(function (h, i) { b += '<c r="' + colL(i + 1) + '1" s="1" t="inlineStr"><is><t>' + xe(h) + '</t></is></c>'; });
+    b += '</row>';
     var r = 2;
-    sessions.forEach(function (sess) {
+    wo.sessions.forEach(function (sess) {
       var serial = dateSerial(sess.date);
+      var sessFirst = true;
       sess.exercises.forEach(function (ex) {
+        var exFirst = true;
         ex.rows.forEach(function (row) {
-          var c = '<row r="' + r + '"><c r="A' + r + '" s="2"><v>' + serial + '</v></c>';
-          c += '<c r="B' + r + '" t="inlineStr"><is><t>' + xe(ex.name) + '</t></is></c>';
-          c += '<c r="C' + r + '"><v>' + row.set + '</v></c>';
-          c += (row.reps == null ? '' : '<c r="D' + r + '"><v>' + row.reps + '</v></c>');
-          c += (row.weight == null ? '' : '<c r="E' + r + '"><v>' + row.weight + '</v></c>');
-          b += c + '</row>'; r++;
+          var d = {
+            serial: serial, exName: ex.name, set: row.set, reps: row.reps, weight: row.weight,
+            rir: row.rir, partials: row.partials, feel: row.feel,
+            leftReps: ex.leftReps, rightReps: ex.rightReps, remarks: ex.remarks, wfeel: sess.feel,
+            exFirst: exFirst, sessFirst: sessFirst
+          };
+          var c = "";
+          cols.forEach(function (h, i) { c += woCell(colL(i + 1) + r, h, d); });
+          b += '<row r="' + r + '">' + c + '</row>'; r++;
+          exFirst = false; sessFirst = false;
         });
       });
       r++; // blank row between days
     });
+    var colsX = '<cols>';
+    cols.forEach(function (h, i) { colsX += '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + woColWidth(h) + '" customWidth="1"/>'; });
+    colsX += '</cols>';
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
       '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>' +
-      '<sheetFormatPr defaultRowHeight="15"/>' +
-      '<cols><col min="1" max="1" width="12" customWidth="1"/><col min="2" max="2" width="22" customWidth="1"/><col min="3" max="3" width="6" customWidth="1"/><col min="4" max="4" width="7" customWidth="1"/><col min="5" max="5" width="9" customWidth="1"/></cols>' +
+      '<sheetFormatPr defaultRowHeight="15"/>' + colsX +
       '<sheetData>' + b + '</sheetData></worksheet>';
   }
 
@@ -1064,8 +1241,9 @@
     var sorted = state.history.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
     sorted.forEach(function (sess) {
       var key = sess.dayId || sess.dayName || "Workout";
-      if (!map[key]) { map[key] = { name: sess.dayName || "Workout", sessions: [] }; order.push(key); }
+      if (!map[key]) { map[key] = { name: sess.dayName || "Workout", sessions: [], flags: { arms: false, rir: false, partials: false, feel: false, remarks: false, wfeel: false } }; order.push(key); }
       map[key].name = sess.dayName || map[key].name;
+      var flags = map[key].flags;
       var exs = [];
       sess.exercises.forEach(function (ex) {
         var name = (ex.name || "").trim();
@@ -1074,13 +1252,29 @@
         ex.sets.forEach(function (s) {
           var rp = numOrNull(s.reps), wt = numOrNull(s.weight);
           var drops = (s.drops || []).filter(function (d) { return numOrNull(d.reps) != null || numOrNull(d.weight) != null; });
-          if (rp == null && wt == null && !drops.length) return;
-          if (!(rp == null && wt == null)) { setNo++; rows.push({ set: String(setNo), reps: rp, weight: wt }); }
-          drops.forEach(function (d, di) { rows.push({ set: setNo + "." + (di + 1), reps: numOrNull(d.reps), weight: numOrNull(d.weight) }); });
+          var rir = numOrNull(s.rir), partials = numOrNull(s.partials), feel = (s.feel || "");
+          var extra = (rir != null || partials != null || feel !== "");
+          if (rp == null && wt == null && !drops.length && !extra) return;
+          if (!(rp == null && wt == null) || extra) {
+            setNo++;
+            if (rir != null) flags.rir = true;
+            if (partials != null) flags.partials = true;
+            if (feel) flags.feel = true;
+            rows.push({ set: String(setNo), reps: rp, weight: wt, rir: rir, partials: partials, feel: feel });
+          }
+          drops.forEach(function (d, di) { rows.push({ set: setNo + "." + (di + 1), reps: numOrNull(d.reps), weight: numOrNull(d.weight), rir: null, partials: null, feel: "" }); });
         });
-        if (rows.length) exs.push({ name: name, rows: rows });
+        if (!rows.length) return;
+        var leftReps = numOrNull(ex.leftReps), rightReps = numOrNull(ex.rightReps), remarks = (ex.remarks || "").trim();
+        if (leftReps != null || rightReps != null) flags.arms = true;
+        if (remarks) flags.remarks = true;
+        exs.push({ name: name, leftReps: leftReps, rightReps: rightReps, remarks: remarks, rows: rows });
       });
-      if (exs.length) map[key].sessions.push({ date: sess.date, exercises: exs });
+      if (exs.length) {
+        var wfeel = (sess.feel || "").trim();
+        if (wfeel) flags.wfeel = true;
+        map[key].sessions.push({ date: sess.date, feel: wfeel, exercises: exs });
+      }
     });
     return { order: order, map: map };
   }
@@ -1120,7 +1314,7 @@
     return assembleWorkbook(agg.order.map(function (key) {
       var live = getDay(key);
       var title = (live && live.name) || agg.map[key].name || "Workout";
-      return { title: title, xml: workoutSheetXml(agg.map[key].sessions) };
+      return { title: title, xml: workoutSheetXml(agg.map[key]) };
     }));
   }
 
@@ -1259,14 +1453,26 @@
     var exs = [];
     day.exercises.forEach(function (ex) {
       if (!(ex.name || "").trim()) return;
+      var st = exSettings(ex);
       var hasData = ex.sets.some(function (s) {
-        return s.reps !== "" || s.weight !== "" || (s.drops || []).some(function (d) { return d.reps !== "" || d.weight !== ""; });
+        return s.reps !== "" || s.weight !== "" ||
+          (s.drops || []).some(function (d) { return d.reps !== "" || d.weight !== ""; }) ||
+          (s.rir || "") !== "" || (s.partials || "") !== "" || (s.feel || "") !== "";
       });
       if (!hasData) return;
       exs.push({
         name: ex.name.trim(),
+        leftReps: st.arms ? (ex.leftReps || "") : "",
+        rightReps: st.arms ? (ex.rightReps || "") : "",
+        remarks: st.remarks ? (ex.remarks || "") : "",
         sets: ex.sets.map(function (s) {
-          return { reps: s.reps, weight: s.weight, drops: (s.drops || []).map(function (d) { return { reps: d.reps, weight: d.weight }; }) };
+          return {
+            reps: s.reps, weight: s.weight,
+            drops: (s.drops || []).map(function (d) { return { reps: d.reps, weight: d.weight }; }),
+            rir: st.rir ? (s.rir || "") : "",
+            partials: st.partials ? (s.partials || "") : "",
+            feel: st.feel ? feelLabel(SET_FEELS, s.feel) : ""
+          };
         })
       });
     });
@@ -1280,15 +1486,17 @@
     var date = todayISO();
     // replace any earlier save of THIS workout on THIS day, so re-saving just updates it
     state.history = state.history.filter(function (s) { return !(s.date === date && s.dayId === day.id); });
-    state.history.push({ id: uid(), date: date, dayId: day.id, dayName: day.name, exercises: exs });
+    state.history.push({ id: uid(), date: date, dayId: day.id, dayName: day.name, feel: feelLabel(WO_FEELS, day.feel), exercises: exs });
 
     // erase entered numbers so the workout is a clean template next time (exercises + set rows stay)
     day.exercises.forEach(function (ex) {
+      ex.leftReps = ""; ex.rightReps = ""; ex.remarks = "";
       ex.sets.forEach(function (s) {
-        s.reps = ""; s.weight = "";
+        s.reps = ""; s.weight = ""; s.rir = ""; s.partials = ""; s.feel = "";
         (s.drops || []).forEach(function (d) { d.reps = ""; d.weight = ""; });
       });
     });
+    day.feel = "";
     save();
     if (section === "workout" && view === "day" && activeDayId === day.id) renderDay(day);
 
@@ -1356,6 +1564,7 @@
   // Android hardware back button -> step back one level instead of leaving the app
   window.addEventListener("popstate", function () {
     if (section === "meal" && (mealView === "plan" || mealView === "detail")) { mealView = "home"; render(); }
+    else if (section === "workout" && view === "exset") { view = "day"; render(); }
     else if (section === "workout" && view === "day") { view = "home"; render(); }
     history.pushState(null, "");
   });
